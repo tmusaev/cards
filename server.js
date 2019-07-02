@@ -18,6 +18,8 @@ class Game
 {
   constructor(player1, player2)
   {
+    this.winner = 0;
+    this.loser = 0;
     this.player1 = player1;
     this.player2 = player2;
     this.turnPlayer = player2;
@@ -29,7 +31,6 @@ class Game
     if (id == this.player1.id && id == this.turnPlayer.id && this.phase == 2)
     {
       var c = this.player1.hand[index];
-      //var c = this.player1.hand.splice(index, 1)[0];
       if (this.player1.mana.available >= c.cost && this.player1.mana.colors.has(c.color))
       {
         this.player1.field.push(this.player1.hand.splice(index, 1)[0]);
@@ -40,7 +41,6 @@ class Game
     else if(id == this.player2.id && id == this.turnPlayer.id && this.phase == 2)
     {
       var c = this.player2.hand[index];
-      //var c = this.player2.hand.splice(index, 1)[0];
       if (this.player2.mana.available >= c.cost && this.player2.mana.colors.has(c.color))
       {
         this.player2.field.push(this.player2.hand.splice(index, 1)[0]);
@@ -77,6 +77,52 @@ class Game
     }
   }
   
+  breakShield(player)
+  {
+    if (player.shields.length > 0)
+    {
+      player.hand.push(player.shields.pop());
+    }
+    else
+    {
+      this.loser = player.id;
+      if (this.player1.id == this.loser)
+      {
+        this.winner = this.player2.id;
+      }
+      else if (this.player2.id == this.loser)
+      {
+        this.winner = this.player1.id;
+      }
+    }
+  }
+  
+  attackPlayer(id, index)
+  {
+    if (id == this.player1.id && id == this.turnPlayer.id && this.phase == 3)
+    {
+      var c = this.player1.field[index];
+      if (c.canattack)
+      {
+        this.player1.field[index].canattack = false;
+        this.player1.field[index].tapped = true;
+        this.breakShield(this.player2);
+        this.emitState();
+      }
+    }
+    else if (id == this.player2.id && id == this.turnPlayer.id && this.phase == 3)
+    {
+      var c = this.player2.field[index];
+      if (c.canattack)
+      {
+        this.player2.field[index].canattack = false;
+        this.player2.field[index].tapped = true;
+        this.breakShield(this.player1);
+        this.emitState();
+      }
+    }
+  }
+  
   nextPhase(id)
   {
     if (id == this.player1.id && id == this.turnPlayer.id)
@@ -91,6 +137,7 @@ class Game
         for (var i = 0; i < this.player2.field.length; i++)
         {
           this.player2.field[i].canattack = true;
+          this.player2.field[i].tapped = false;
         }
         this.phase = 1;
       }
@@ -108,6 +155,7 @@ class Game
         for (var i = 0; i < this.player1.field.length; i++)
         {
           this.player1.field[i].canattack = true;
+          this.player1.field[i].tapped = false;
         }
         this.phase = 1;
       }
@@ -223,6 +271,7 @@ var Card = function(name, type, color, cost, power, race) {
   this.power = power;
   this.race = race;
   this.canattack = false;
+  this.tapped = false;
 };
 
 var games = {};
@@ -242,6 +291,8 @@ io.on('connection', function(socket){
     {
       var newgame = new Game(new Player(queue), new Player(socket.id));
       newgame.setUp();
+      console.log(queue);
+      console.log(socket.id);
       games[queue] = newgame;
       games[socket.id] = newgame;
       queue = null;
@@ -266,6 +317,15 @@ io.on('connection', function(socket){
     if (game != null)
     {
       game.attackPlayer(socket.id, req.index);
+      if (game.winner != 0)
+      {
+        console.log(game.winner);
+        console.log(game.loser);
+        io.to(game.winner).emit('win');
+        io.to(game.loser).emit('loss');
+        delete games[game.winner];
+        delete games[game.loser];
+      }
     }
   });
   
