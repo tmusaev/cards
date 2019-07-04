@@ -123,6 +123,52 @@ class Game
     }
   }
   
+  attackCreature(id, from, to)
+  {
+    if (id == this.player1.id && id == this.turnPlayer.id && this.phase == 3)
+    {
+      var c = this.player1.field[from];
+      var d = this.player2.field[to];
+      if (c.canattack && d.tapped)
+      {
+        this.player1.field[from].canattack = false;
+        this.player1.field[from].tapped = true;
+        var c_dmg = c.power - d.power;
+        var d_dmg = d.power - c.power;
+        if (c_dmg <= 0)
+        {
+          this.player1.field.splice(from, 1)[0];
+        }
+        if (d_dmg <= 0)
+        {
+          this.player2.field.splice(to, 1)[0];
+        }
+        this.emitState();
+      }
+    }
+    else if (id == this.player2.id && id == this.turnPlayer.id && this.phase == 3)
+    {
+      var c = this.player2.field[from];
+      var d = this.player1.field[to];
+      if (c.canattack && d.tapped)
+      {
+        this.player2.field[from].canattack = false;
+        this.player2.field[from].tapped = true;
+        var c_dmg = c.power - d.power;
+        var d_dmg = d.power - c.power;
+        if (c_dmg <= 0)
+        {
+          this.player2.field.splice(from, 1)[0];
+        }
+        if (d_dmg <= 0)
+        {
+          this.player1.field.splice(to, 1)[0];
+        }
+        this.emitState();
+      }
+    }
+  }
+  
   nextPhase(id)
   {
     if (id == this.player1.id && id == this.turnPlayer.id)
@@ -197,9 +243,9 @@ class Game
     var i;
     for (i = 0; i < 40; i++)
     {
-      var r1 = Math.floor((Math.random() * 9) + 1);
+      var r1 = Math.floor((Math.random() * 2) + 1);
       this.player1.deck.push(new Card("Rusalka", "Creature", "Water", r1, r1*1000, "Trench Hunter"));
-      var r2 = Math.floor((Math.random() * 1) + 1);
+      var r2 = Math.floor((Math.random() * 2) + 1);
       this.player2.deck.push(new Card("Rusalka", "Creature", "Water", r2, r2*1000, "Trench Hunter"));
     }
     shuffle(this.player1.deck);
@@ -312,7 +358,15 @@ io.on('connection', function(socket){
     }
   });
   
-    socket.on('attackplayer', function(req) {
+  socket.on('attackcreature', function(req) {
+    var game = games[socket.id];
+    if (game != null)
+    {
+      game.attackCreature(socket.id, req.from, req.to);
+    }
+  });  
+
+  socket.on('attackplayer', function(req) {
     var game = games[socket.id];
     if (game != null)
     {
