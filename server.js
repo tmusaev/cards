@@ -106,6 +106,8 @@ class Game
       {
         this.player1.field[index].canattack = false;
         this.player1.field[index].tapped = true;
+        this.emitStateMyCreatureBattleOpp(this.player1, index);
+        this.emitStateOppCreatureBattleMe(this.player2, index);
         this.breakShield(this.player2);
         this.emitState();
       }
@@ -117,6 +119,8 @@ class Game
       {
         this.player2.field[index].canattack = false;
         this.player2.field[index].tapped = true;
+        this.emitStateMyCreatureBattleOpp(this.player2, index);
+        this.emitStateOppCreatureBattleMe(this.player1, index);
         this.breakShield(this.player1);
         this.emitState();
       }
@@ -143,6 +147,8 @@ class Game
         {
           this.player2.field.splice(to, 1)[0];
         }
+        this.emitStateMyCreatureBattleOppCreature(this.player1, from, to);
+        this.emitStateOppCreatureBattleMyCreature(this.player2, from, to);
         this.emitState();
       }
     }
@@ -164,9 +170,31 @@ class Game
         {
           this.player1.field.splice(to, 1)[0];
         }
+        this.emitStateMyCreatureBattleOppCreature(this.player2, from, to);
+        this.emitStateOppCreatureBattleMyCreature(this.player1, from, to);
         this.emitState();
       }
     }
+  }
+  
+  untapAll(player)
+  {
+    for (var i = 0; i < player.field.length; i++)
+    {
+      player.field[i].canattack = true;
+      player.field[i].tapped = false;
+    }
+  }
+  
+  drawCard(player)
+  {
+    player.hand.push(player.deck.pop());
+  }
+  
+  resetMana(player)
+  {
+    player.mana.available = player.mana.total;
+    player.mana.charged = false;
   }
   
   nextPhase(id)
@@ -177,14 +205,9 @@ class Game
       if (this.phase > 3)
       {
         this.turnPlayer = this.player2;
-        this.player2.mana.available = this.player2.mana.total;
-        this.player2.hand.push(this.player2.deck.pop());
-        this.player2.mana.charged = false;
-        for (var i = 0; i < this.player2.field.length; i++)
-        {
-          this.player2.field[i].canattack = true;
-          this.player2.field[i].tapped = false;
-        }
+        this.resetMana(this.player2);
+        this.untapAll(this.player2);
+        this.drawCard(this.player2);
         this.phase = 1;
       }
       this.emitState();
@@ -195,18 +218,107 @@ class Game
       if (this.phase > 3)
       {
         this.turnPlayer = this.player1;
-        this.player1.hand.push(this.player1.deck.pop());
-        this.player1.mana.available = this.player1.mana.total;
-        this.player1.mana.charged = false;
-        for (var i = 0; i < this.player1.field.length; i++)
-        {
-          this.player1.field[i].canattack = true;
-          this.player1.field[i].tapped = false;
-        }
+        this.resetMana(this.player1);
+        this.untapAll(this.player1);
+        this.drawCard(this.player1);
         this.phase = 1;
       }
       this.emitState();
     }
+  }
+  
+  emitStateBattle()
+  {
+    var p1_data = {};
+    p1_data['inPlay'] = this.player1.field;
+    p1_data['oppInPlay'] = this.player2.field;
+    io.to(this.player1.id).emit('gamestate', p1_data);
+    
+    var p2_data = {};
+    p2_data['inPlay'] = this.player2.field;
+    p2_data['oppInPlay'] = this.player1.field;
+    io.to(this.player2.id).emit('gamestate', p2_data);
+  }
+  
+  emitStateMyCreatureBattleOpp(player, index)
+  {
+    var data = {};
+    data['MyCreatureBattleOpp'] = index;
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateOppCreatureBattleMe(player, index)
+  {
+    var data = {};
+    data['OppCreatureBattleMe'] = index;
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateMyCreatureBattleOppCreature(player, from, to)
+  {
+    var data = {};
+    data['MyCreatureBattleOppCreature'] = [from, to];
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateOppCreatureBattleMyCreature(player, from, to)
+  {
+    var data = {};
+    data['OppCreatureBattleMyCreature'] = [from, to];
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateIPlayCard(player, index)
+  {
+    var data = {};
+    data['IPlayCard'] = index;
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateOppPlayCard(player, index)
+  {
+    var data = {};
+    data['OppPlayCard'] = index;
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStatePhase()
+  {
+    var p1_data = {};
+    p1_data['turnPlayer'] = (this.turnPlayer == this.player1);
+    p1_data['phase'] = this.phase;
+    io.to(this.player1.id).emit('gamestate', p1_data);
+    
+    var p2_data = {};
+    p2_data['turnPlayer'] = (this.turnPlayer == this.player2)
+    p2_data['phase'] = this.phase;
+    io.to(this.player2.id).emit('gamestate', p2_data);
+  }
+  
+  emitStateMana()
+  {
+    var p1_data = {};
+    p1_data['mana'] = this.player1.mana;
+    p1_data['oppMana'] = this.player2.mana;
+    io.to(this.player1.id).emit('gamestate', p1_data);
+    
+    var p2_data = {};
+    p2_data['mana'] = this.player2.mana;
+    p2_data['oppMana'] = this.player1.mana;
+    io.to(this.player2.id).emit('gamestate', p2_data);
+  }
+  
+  emitStateHand()
+  {
+    var p1_data = {};
+    p1_data['hand'] = this.player1.hand;
+    p1_data['oppHand'] = this.player2.hand.length;
+    io.to(this.player1.id).emit('gamestate', p1_data);
+    
+    var p2_data = {};
+    p2_data['hand'] = this.player2.hand;
+    p2_data['oppHand'] = this.player1.hand.length;
+    io.to(this.player2.id).emit('gamestate', p2_data);
   }
   
   emitState()
@@ -318,16 +430,18 @@ var Card = function(name, type, color, cost, power, race) {
   this.race = race;
   this.canattack = false;
   this.tapped = false;
+  this.attacking = false;
+  this.beingattacked = false;
+  this.attackingplayer = false;
 };
 
 var games = {};
 var queue = null;
 
 io.on('connection', function(socket){
-  console.log('socket working');
   
   socket.on('connection', function() {
-    console.log('a user connected');
+    console.log('User connected: '+socket.id);
     
     if (queue == null)
     {
@@ -337,8 +451,7 @@ io.on('connection', function(socket){
     {
       var newgame = new Game(new Player(queue), new Player(socket.id));
       newgame.setUp();
-      console.log(queue);
-      console.log(socket.id);
+      console.log('Creating game');
       games[queue] = newgame;
       games[socket.id] = newgame;
       queue = null;
@@ -347,7 +460,7 @@ io.on('connection', function(socket){
   });
   
   socket.on('disconnect', function() {
-    console.log('someone disconnected!');
+    console.log('User disconnected: '+socket.id);
   });
   
   socket.on('playcard', function(req) {
@@ -373,10 +486,14 @@ io.on('connection', function(socket){
       game.attackPlayer(socket.id, req.index);
       if (game.winner != 0)
       {
-        console.log(game.winner);
-        console.log(game.loser);
-        io.to(game.winner).emit('win');
-        io.to(game.loser).emit('loss');
+        console.log("Winner: "+game.winner);
+        console.log("Loser: "+game.loser);
+        var win_data = {};
+        win_data['win'] = 1;
+        io.to(game.winner).emit('gamestate', win_data);
+        var loss_data = {};
+        loss_data['loss'] = 1;
+        io.to(game.loser).emit('gamestate', loss_data);
         delete games[game.winner];
         delete games[game.loser];
       }
