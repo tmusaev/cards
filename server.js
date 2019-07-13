@@ -36,6 +36,7 @@ class Game
         this.player1.field.push(this.player1.hand.splice(index, 1)[0]);
         this.player1.mana.available -= c.cost;
         this.emitState();
+        c.OnEnter(this, id);
       }
     }
     else if(id == this.player2.id && id == this.turnPlayer.id && this.phase == 2)
@@ -46,6 +47,7 @@ class Game
         this.player2.field.push(this.player2.hand.splice(index, 1)[0]);
         this.player2.mana.available -= c.cost;
         this.emitState();
+        c.OnEnter(this, id);
       }
           
     }
@@ -188,7 +190,18 @@ class Game
   
   drawCard(player)
   {
-    player.hand.push(player.deck.pop());
+    var c = player.deck.pop();
+    player.hand.push(c);
+    if (this.player1.id == player.id)
+    {
+      this.emitStateIDrawCard(player, c);
+      this.emitStateOppDrawCard(this.player2);
+    }
+    else if(this.player2.id == player.id)
+    {
+      this.emitStateIDrawCard(player, c);
+      this.emitStateOppDrawCard(this.player1);
+    }
   }
   
   resetMana(player)
@@ -238,6 +251,20 @@ class Game
     p2_data['inPlay'] = this.player2.field;
     p2_data['oppInPlay'] = this.player1.field;
     io.to(this.player2.id).emit('gamestate', p2_data);
+  }
+  
+  emitStateIDrawCard(player, c)
+  {
+    var data = {};
+    data['IDrawCard'] = c;
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateOppDrawCard(player)
+  {
+    var data = {};
+    data['OppDrawCard'] = 1;
+    io.to(player.id).emit('gamestate', data);
   }
   
   emitStateMyCreatureBattleOpp(player, index)
@@ -355,10 +382,8 @@ class Game
     var i;
     for (i = 0; i < 40; i++)
     {
-      var r1 = Math.floor((Math.random() * 2) + 1);
-      this.player1.deck.push(new Card("Rusalka", "Creature", "Water", r1, r1*1000, "Trench Hunter"));
-      var r2 = Math.floor((Math.random() * 2) + 1);
-      this.player2.deck.push(new Card("Rusalka", "Creature", "Water", r2, r2*1000, "Trench Hunter"));
+      this.player1.deck.push(new Rusalka());
+      this.player2.deck.push(new Rusalka());
     }
     shuffle(this.player1.deck);
     shuffle(this.player2.deck);
@@ -421,19 +446,57 @@ class Player
   }
 }
 
-var Card = function(name, type, color, cost, power, race) {
-  this.name = name;
-  this.type = type;
-  this.color = color;
-  this.cost = cost;
-  this.power = power;
-  this.race = race;
-  this.canattack = false;
-  this.tapped = false;
-  this.attacking = false;
-  this.beingattacked = false;
-  this.attackingplayer = false;
-};
+class Card 
+{
+  constructor()
+  {
+    this.name = "";
+    this.type = "";
+    this.color = "";
+    this.cost = 0;
+    this.power = 0;
+    this.race = "";
+    this.canattack = false;
+    this.tapped = false;
+    this.attacking = false;
+    this.beingattacked = false;
+    this.attackingplayer = false;
+    this.text = "";
+  }
+  OnEnter(game, id)
+  {
+    //default to do nothing
+  }
+}
+
+class Rusalka extends Card
+{
+  constructor()
+  {
+    super();
+    this.name = "Rusalka";
+    this.type = "Creature";
+    this.color = "Water";
+    var r1 = Math.floor((Math.random() * 2) + 1);
+    this.cost = r1;
+    this.power = r1*1000;
+    this.race = "Trench Hunter";
+    this.text = "OnEnter: Draw a card.";
+  }
+
+  OnEnter(game, id)
+  {
+    if (game.player1.id == id)
+    {
+      game.drawCard(game.player1);
+    }
+    else if (game.player2.id == id)
+    {
+      game.drawCard(game.player2);
+    }
+    game.emitState();
+  }
+}
 
 var games = {};
 var queue = null;
