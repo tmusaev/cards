@@ -39,6 +39,10 @@ class Game
     }*/
     this.turnPlayer = player2;
     this.phase = 1;
+    this.waitingOnBlock = false;
+    this.attackingPlayer = null;
+    this.attackerIndex = 0;
+    this.defaultBlockerIndex = -1;
   }
   
   playCard(player, opp, index)
@@ -99,48 +103,125 @@ class Game
     }
   }
   
+  getBlockers(card, opp)
+  {
+    var blockers = [];
+    for (var i = 0; i < opp.field.length; i++)
+    {
+      if (opp.field[i].blocker && !opp.field[i].tapped)
+      {
+        blockers.push(i);
+      }
+    }
+    return blockers;
+  }
+  
+  blockerChosen(player, opp, blockerIndex)
+  {
+    if (blockerIndex >= 0 && blockerIndex < player.field.length)
+    {
+      player.field[blockerIndex].OnBlock(this, player.id);
+      this.emitStateMyCreatureBattleOppCreature(opp, this.attackerIndex, blockerIndex);
+      this.emitStateOppCreatureBattleMyCreature(player, this.attackerIndex, blockerIndex);
+      this.creatureBattle(opp, player, this.attackerIndex, blockerIndex);
+    }
+    else if (this.defaultBlockerIndex >= 0 && this.defaultBlockerIndex < player.field.length)
+    {
+      this.emitStateMyCreatureBattleOppCreature(opp, this.attackerIndex, this.defaultBlockerIndex);
+      this.emitStateOppCreatureBattleMyCreature(player, this.attackerIndex, this.defaultBlockerIndex);
+      this.creatureBattle(opp, player, this.attackerIndex, this.defaultBlockerIndex);
+    }
+    else
+    {
+      this.emitStateMyCreatureBattleOpp(opp, this.attackerIndex);
+      this.emitStateOppCreatureBattleMe(player, this.attackerIndex);
+      this.breakShield(player);
+      opp.field[this.attackerIndex].OnEndAttack(this, opp.id);
+      this.emitState();
+    }
+    this.waitingOnBlock = false;
+    this.attackingPlayer = null;
+    this.attackerIndex = 0;
+    this.defaultBlockerIndex = -1;
+  }
+  
   attackPlayer(player, opp, index)
   {
-    if (player.id == this.turnPlayer.id && this.phase == phases.BATTLE)
+    if (player.id == this.turnPlayer.id && this.phase == phases.BATTLE && !this.waitingOnBlock)
     {
       var c = player.field[index];
       if (c.canattack)
       {
-        player.field[index].canattack = false;
-        player.field[index].tapped = true;
-        this.emitStateMyCreatureBattleOpp(player, index);
-        this.emitStateOppCreatureBattleMe(opp, index);
-        this.breakShield(opp);
-        this.emitState();
+        c.OnAttack(this, player.id);
+        var blockers = this.getBlockers(c, opp);
+        this.emitStateMyCreatureDeclareAtkPlayer(player, player.field[index], index);
+        this.emitStateOppCreatureDeclareAtkPlayer(opp, player.field[index], index);
+        if (blockers.length > 0)
+        {
+          this.waitingOnBlock = true;
+          this.attackerIndex = index;
+          this.defaultBlockerIndex = -1;
+          this.attackingPlayer = player;
+          this.emitStateChooseBlockers(opp, blockers);
+        }
+        else
+        {
+          this.emitStateMyCreatureBattleOpp(player, index);
+          this.emitStateOppCreatureBattleMe(opp, index);
+          this.breakShield(opp);
+          c.OnEndAttack(this, player.id);
+          this.emitState();
+        }
       }
     }
   }
   
   attackCreature(player, opp, from, to)
   {
-    if (player.id == this.turnPlayer.id && this.phase == phases.BATTLE)
+    if (player.id == this.turnPlayer.id && this.phase == phases.BATTLE && !this.waitingOnBlock)
     {
       var c = player.field[from];
       var d = opp.field[to];
       if (c.canattack && d.tapped)
       {
-        player.field[from].canattack = false;
-        player.field[from].tapped = true;
-        this.emitStateMyCreatureBattleOppCreature(player, from, to);
-        this.emitStateOppCreatureBattleMyCreature(opp, from, to);
-        var c_dmg = c.power - d.power;
-        var d_dmg = d.power - c.power;
-        if (c_dmg <= 0)
+        c.OnAttack(this, player.id);
+        var blockers = this.getBlockers(c, opp);
+        this.emitStateMyCreatureDeclareAtkToCreature(player, c, from, to);
+        this.emitStateOppCreatureDeclareAtkToCreature(opp, c, from, to);
+        if (blockers.length > 0)
         {
-          this.destroyCreature(player, from);
+          this.waitingOnBlock = true;
+          this.attackerIndex = from;
+          this.defaultBlockerIndex = to;
+          this.attackingPlayer = player;
+          this.emitStateChooseBlockers(opp, blockers);
         }
-        if (d_dmg <= 0)
+        else
         {
-          this.destroyCreature(opp, to);
+          this.emitStateMyCreatureBattleOppCreature(player, from, to);
+          this.emitStateOppCreatureBattleMyCreature(opp, from, to);
+          this.creatureBattle(player, opp, from, to);
         }
-        this.emitState();
       }
     }
+  }
+  
+  creatureBattle(player, opp, from, to)
+  {
+      var c = player.field[from];
+      var d = opp.field[to];
+      var c_dmg = c.power - d.power;
+      var d_dmg = d.power - c.power;
+      c.OnEndAttack(this, player.id);
+      if (c_dmg <= 0)
+      {
+        this.destroyCreature(player, from);
+      }
+      if (d_dmg <= 0)
+      {
+        this.destroyCreature(opp, to);
+      }
+      this.emitState();
   }
   
   untapAll(player)
@@ -191,7 +272,7 @@ class Game
   
   nextPhase(player, opp)
   {
-    if (player.id == this.turnPlayer.id)
+    if (player.id == this.turnPlayer.id && !this.waitingOnBlock)
     {
       this.phase = this.phase + 1;
       if (this.phase > 3)
@@ -231,6 +312,41 @@ class Game
   {
     var data = {};
     data['OppDrawCard'] = 1;
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateMyCreatureDeclareAtkToCreature(player, creature, from, to)
+  {
+    var data = {};
+    data['MyCreatureDeclareAtkToCreature'] = [creature, from, to];
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateOppCreatureDeclareAtkToCreature(player, creature, from, to)
+  {
+    var data = {};
+    data['OppCreatureDeclareAtkToCreature'] = [creature, from, to];
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateMyCreatureDeclareAtkPlayer(player, creature, index)
+  {
+    var data = {};
+    data['MyCreatureDeclareAtkPlayer'] = [creature, index];
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateOppCreatureDeclareAtkPlayer(player, creature, index)
+  {
+    var data = {};
+    data['OppCreatureDeclareAtkPlayer'] = [creature, index];
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateChooseBlockers(player, blockers)
+  {
+    var data = {};
+    data['ChooseBlockers'] = blockers;
     io.to(player.id).emit('gamestate', data);
   }
   
@@ -294,26 +410,31 @@ class Game
   setUp()
   {
     var i;
-    for (i = 0; i < 40; i++)
+    for (i = 0; i < 20; i++)
     {
-      //this.player1.deck.push(new AstrocometDragon());
-      //this.player2.deck.push(new AstrocometDragon());
-      var r1 = Math.floor((Math.random() * 3) + 1);
-      if (r1 == 1)
-      {
-        this.player1.deck.push(new MightyShouter());
-        this.player2.deck.push(new MightyShouter());
-      }
-      if (r1 == 2)
-      {
-        this.player1.deck.push(new AquaHulcus());
-        this.player2.deck.push(new AquaHulcus());
-      }
-      if (r1 == 3)
-      {
-        this.player1.deck.push(new DeadlyFighterBraidClaw());
-        this.player2.deck.push(new DeadlyFighterBraidClaw());
-      }
+      this.player1.deck.push(new AquaHulcus());
+      this.player2.deck.push(new AquaHulcus());
+      // var r1 = Math.floor((Math.random() * 3) + 1);
+      // if (r1 == 1)
+      // {
+      //   this.player1.deck.push(new MightyShouter());
+      //   this.player2.deck.push(new MightyShouter());
+      // }
+      // if (r1 == 2)
+      // {
+      //   this.player1.deck.push(new AquaHulcus());
+      //   this.player2.deck.push(new AquaHulcus());
+      // }
+      // if (r1 == 3)
+      // {
+      //   this.player1.deck.push(new DeadlyFighterBraidClaw());
+      //   this.player2.deck.push(new DeadlyFighterBraidClaw());
+      // }
+    }
+    for (i = 0; i < 20; i++)
+    {
+      this.player1.deck.push(new MightyShouter());
+      this.player2.deck.push(new MightyShouter());
     }
     shuffle(this.player1.deck);
     shuffle(this.player2.deck);
@@ -392,10 +513,24 @@ class Card
     this.beingattacked = false;
     this.attackingplayer = false;
     this.text = "";
+    this.blocker = false;
   }
   OnEnter(game, id)
   {
     //default to do nothing
+  }
+  OnAttack(game, id)
+  {
+    this.tapped = true;
+    this.attacking = true; 
+  }
+  OnEndAttack(game, id)
+  {
+    this.attacking = false;
+  }
+  OnBlock(game, id)
+  {
+    this.tapped = true;
   }
 }
 
@@ -408,9 +543,19 @@ class MightyShouter extends Card
     this.type = "Creature";
     this.color = "Green";
     this.cost = 1;
-    this.power = 2000;
+    this.power = 1000;
     this.race = "Beast Folk";
-    this.text = "";
+    this.text = "Power Attack +2000";
+  }
+  OnAttack(game, id)
+  {
+    super.OnAttack(game, id);
+    this.power += 2000;
+  }
+  OnEndAttack(game, id)
+  {
+    super.OnEndAttack(game, id);
+    this.power -= 2000;
   }
 }
 
@@ -423,23 +568,25 @@ class AquaHulcus extends Card
     this.type = "Creature";
     this.color = "Blue";
     this.cost = 1;
-    this.power = 1000;
+    this.power = 2000;
     this.race = "Liquid People";
-    this.text = "OnEnter: Draw 1 card.";
+    //this.text = "OnEnter: Draw 1 card.";
+    this.blocker = true;
+    this.text = "Blocker";
   }
   
-  OnEnter(game, id)
-  {
-    if (game.player1.id == id)
-    {
-      game.drawCard(game.player1);
-    }
-    else if (game.player2.id == id)
-    {
-      game.drawCard(game.player2);
-    }
-    game.emitState();
-  }
+  // OnEnter(game, id)
+  // {
+  //   if (game.player1.id == id)
+  //   {
+  //     game.drawCard(game.player1);
+  //   }
+  //   else if (game.player2.id == id)
+  //   {
+  //     game.drawCard(game.player2);
+  //   }
+  //   game.emitState();
+  // }
 }
 
 class DeadlyFighterBraidClaw extends Card
@@ -453,7 +600,6 @@ class DeadlyFighterBraidClaw extends Card
     this.cost = 1;
     this.power = 1000;
     this.race = "Dragonoid";
-    //this.text = "";
   }
 }
 
@@ -670,6 +816,21 @@ io.on('connection', function(socket){
       else if (socket.id == game.player2.id)
       {
         game.nextPhase(game.player2, game.player1);
+      }
+    }
+  });
+  
+  socket.on('blocker', function(req) {
+    var game = games[socket.id];
+    if (game != null)
+    {
+      if (socket.id == game.player1.id)
+      {
+        game.blockerChosen(game.player1, game.player2, req.index);
+      }
+      else if (socket.id == game.player2.id)
+      {
+        game.blockerChosen(game.player2, game.player1, req.index);
       }
     }
   });
