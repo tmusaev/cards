@@ -14,6 +14,12 @@ var listener = http.listen(process.env.PORT, function () {
 
 var uri = 'mongodb://'+process.env.USER+':'+process.env.PASS+'@'+process.env.HOST+':'+process.env.PT+'/'+process.env.DB;
 
+const phases = {
+    MANA: 1,
+    MAIN: 2,
+    BATTLE: 3
+}
+
 class Game
 {
   constructor(player1, player2)
@@ -22,58 +28,52 @@ class Game
     this.loser = 0;
     this.player1 = player1;
     this.player2 = player2;
+    /*var r = Math.floor((Math.random() * 2) + 1);
+    if (r == 1)
+    {
+      this.turnPlayer = player1;
+    }  
+    else
+    {
+      this.turnPlayer = player2;
+    }*/
     this.turnPlayer = player2;
     this.phase = 1;
   }
   
-  playCard(id, index)
+  playCard(player, opp, index)
   {
-    if (id == this.player1.id && id == this.turnPlayer.id && this.phase == 2)
+    if (player.id == this.turnPlayer.id && this.phase == phases.MAIN)
     {
-      var c = this.player1.hand[index];
-      if (this.player1.mana.available >= c.cost && this.player1.mana.colors.has(c.color))
+      var c = player.hand[index];
+      if (typeof(c) == "undefined")
       {
-        this.player1.field.push(this.player1.hand.splice(index, 1)[0]);
-        this.player1.mana.available -= c.cost;
-        this.emitState();
-        c.OnEnter(this, id);
+        return;
       }
-    }
-    else if(id == this.player2.id && id == this.turnPlayer.id && this.phase == 2)
-    {
-      var c = this.player2.hand[index];
-      if (this.player2.mana.available >= c.cost && this.player2.mana.colors.has(c.color))
+      if (player.mana.available >= c.cost && player.mana.colors.has(c.color))
       {
-        this.player2.field.push(this.player2.hand.splice(index, 1)[0]);
-        this.player2.mana.available -= c.cost;
+        player.field.push(player.hand.splice(index, 1)[0]);
+        player.mana.available -= c.cost;
         this.emitState();
-        c.OnEnter(this, id);
+        c.OnEnter(this, player.id);
       }
-          
     }
   }
   
-  playMana(id, index)
+  playMana(player, opp, index)
   {
-    if (id == this.player1.id && id == this.turnPlayer.id && this.phase == 1 && !this.player1.mana.charged)
+    if (player.id == this.turnPlayer.id && this.phase == phases.MANA && !player.mana.charged)
     {
-      var c = this.player1.hand.splice(index, 1)[0];
-      this.player1.mana.contents.push(c);
-      this.player1.mana.colors.add(c.color);
-      this.player1.mana.total = this.player1.mana.total+1;
-      this.player1.mana.available = this.player1.mana.available+1;
-      this.player1.mana.charged = true;
-      this.phase = 2;
-      this.emitState();
-    }
-    else if(id == this.player2.id && id == this.turnPlayer.id && this.phase == 1 && !this.player2.mana.charged)
-    {
-      var c = this.player2.hand.splice(index, 1)[0];
-      this.player2.mana.contents.push(c);
-      this.player2.mana.colors.add(c.color);
-      this.player2.mana.total = this.player2.mana.total+1;
-      this.player2.mana.available = this.player2.mana.available+1;
-      this.player2.mana.charged = true;
+      var c = player.hand.splice(index, 1)[0];
+      if (typeof(c) == "undefined")
+      {
+        return;
+      }
+      player.mana.contents.push(c);
+      player.mana.colors.add(c.color);
+      player.mana.total = player.mana.total+1;
+      player.mana.available = player.mana.available+1;
+      player.mana.charged = true;
       this.phase = 2;
       this.emitState();
     }
@@ -99,81 +99,45 @@ class Game
     }
   }
   
-  attackPlayer(id, index)
+  attackPlayer(player, opp, index)
   {
-    if (id == this.player1.id && id == this.turnPlayer.id && this.phase == 3)
+    if (player.id == this.turnPlayer.id && this.phase == phases.BATTLE)
     {
-      var c = this.player1.field[index];
+      var c = player.field[index];
       if (c.canattack)
       {
-        this.player1.field[index].canattack = false;
-        this.player1.field[index].tapped = true;
-        this.emitStateMyCreatureBattleOpp(this.player1, index);
-        this.emitStateOppCreatureBattleMe(this.player2, index);
-        this.breakShield(this.player2);
-        this.emitState();
-      }
-    }
-    else if (id == this.player2.id && id == this.turnPlayer.id && this.phase == 3)
-    {
-      var c = this.player2.field[index];
-      if (c.canattack)
-      {
-        this.player2.field[index].canattack = false;
-        this.player2.field[index].tapped = true;
-        this.emitStateMyCreatureBattleOpp(this.player2, index);
-        this.emitStateOppCreatureBattleMe(this.player1, index);
-        this.breakShield(this.player1);
+        player.field[index].canattack = false;
+        player.field[index].tapped = true;
+        this.emitStateMyCreatureBattleOpp(player, index);
+        this.emitStateOppCreatureBattleMe(opp, index);
+        this.breakShield(opp);
         this.emitState();
       }
     }
   }
   
-  attackCreature(id, from, to)
+  attackCreature(player, opp, from, to)
   {
-    if (id == this.player1.id && id == this.turnPlayer.id && this.phase == 3)
+    if (player.id == this.turnPlayer.id && this.phase == phases.BATTLE)
     {
-      var c = this.player1.field[from];
-      var d = this.player2.field[to];
+      var c = player.field[from];
+      var d = opp.field[to];
       if (c.canattack && d.tapped)
       {
-        this.player1.field[from].canattack = false;
-        this.player1.field[from].tapped = true;
+        player.field[from].canattack = false;
+        player.field[from].tapped = true;
+        this.emitStateMyCreatureBattleOppCreature(player, from, to);
+        this.emitStateOppCreatureBattleMyCreature(opp, from, to);
         var c_dmg = c.power - d.power;
         var d_dmg = d.power - c.power;
         if (c_dmg <= 0)
         {
-          this.player1.field.splice(from, 1)[0];
+          this.destroyCreature(player, from);
         }
         if (d_dmg <= 0)
         {
-          this.player2.field.splice(to, 1)[0];
+          this.destroyCreature(opp, to);
         }
-        this.emitStateMyCreatureBattleOppCreature(this.player1, from, to);
-        this.emitStateOppCreatureBattleMyCreature(this.player2, from, to);
-        this.emitState();
-      }
-    }
-    else if (id == this.player2.id && id == this.turnPlayer.id && this.phase == 3)
-    {
-      var c = this.player2.field[from];
-      var d = this.player1.field[to];
-      if (c.canattack && d.tapped)
-      {
-        this.player2.field[from].canattack = false;
-        this.player2.field[from].tapped = true;
-        var c_dmg = c.power - d.power;
-        var d_dmg = d.power - c.power;
-        if (c_dmg <= 0)
-        {
-          this.player2.field.splice(from, 1)[0];
-        }
-        if (d_dmg <= 0)
-        {
-          this.player1.field.splice(to, 1)[0];
-        }
-        this.emitStateMyCreatureBattleOppCreature(this.player2, from, to);
-        this.emitStateOppCreatureBattleMyCreature(this.player1, from, to);
         this.emitState();
       }
     }
@@ -185,6 +149,21 @@ class Game
     {
       player.field[i].canattack = true;
       player.field[i].tapped = false;
+    }
+  }
+  
+  destroyCreature(player, index)
+  {
+    player.field.splice(index, 1)[0];
+    if (this.player1.id == player.id)
+    {
+      this.emitStateDestroyMyCreature(player, index);
+      this.emitStateDestroyOppCreature(this.player2, index);
+    }
+    else if(this.player2.id == player.id)
+    {
+      this.emitStateDestroyMyCreature(player, index);
+      this.emitStateDestroyOppCreature(this.player1, index);
     }
   }
   
@@ -210,47 +189,35 @@ class Game
     player.mana.charged = false;
   }
   
-  nextPhase(id)
+  nextPhase(player, opp)
   {
-    if (id == this.player1.id && id == this.turnPlayer.id)
+    if (player.id == this.turnPlayer.id)
     {
       this.phase = this.phase + 1;
       if (this.phase > 3)
       {
-        this.turnPlayer = this.player2;
-        this.resetMana(this.player2);
-        this.untapAll(this.player2);
-        this.drawCard(this.player2);
-        this.phase = 1;
-      }
-      this.emitState();
-    }
-    else if(id == this.player2.id && id == this.turnPlayer.id)
-    {
-      this.phase = this.phase + 1;
-      if (this.phase > 3)
-      {
-        this.turnPlayer = this.player1;
-        this.resetMana(this.player1);
-        this.untapAll(this.player1);
-        this.drawCard(this.player1);
-        this.phase = 1;
+        this.turnPlayer = opp;
+        this.resetMana(opp);
+        this.untapAll(opp);
+        this.drawCard(opp);
+        this.phase = phases.MANA;
       }
       this.emitState();
     }
   }
   
-  emitStateBattle()
+  emitStateDestroyMyCreature(player, index)
   {
-    var p1_data = {};
-    p1_data['inPlay'] = this.player1.field;
-    p1_data['oppInPlay'] = this.player2.field;
-    io.to(this.player1.id).emit('gamestate', p1_data);
-    
-    var p2_data = {};
-    p2_data['inPlay'] = this.player2.field;
-    p2_data['oppInPlay'] = this.player1.field;
-    io.to(this.player2.id).emit('gamestate', p2_data);
+    var data = {};
+    data['DestroyMyCreature'] = index;
+    io.to(player.id).emit('gamestate', data);
+  }
+  
+  emitStateDestroyOppCreature(player, index)
+  {
+    var data = {};
+    data['DestroyOppCreature'] = index;
+    io.to(player.id).emit('gamestate', data);
   }
   
   emitStateIDrawCard(player, c)
@@ -295,59 +262,6 @@ class Game
     io.to(player.id).emit('gamestate', data);
   }
   
-  emitStateIPlayCard(player, index)
-  {
-    var data = {};
-    data['IPlayCard'] = index;
-    io.to(player.id).emit('gamestate', data);
-  }
-  
-  emitStateOppPlayCard(player, index)
-  {
-    var data = {};
-    data['OppPlayCard'] = index;
-    io.to(player.id).emit('gamestate', data);
-  }
-  
-  emitStatePhase()
-  {
-    var p1_data = {};
-    p1_data['turnPlayer'] = (this.turnPlayer == this.player1);
-    p1_data['phase'] = this.phase;
-    io.to(this.player1.id).emit('gamestate', p1_data);
-    
-    var p2_data = {};
-    p2_data['turnPlayer'] = (this.turnPlayer == this.player2)
-    p2_data['phase'] = this.phase;
-    io.to(this.player2.id).emit('gamestate', p2_data);
-  }
-  
-  emitStateMana()
-  {
-    var p1_data = {};
-    p1_data['mana'] = this.player1.mana;
-    p1_data['oppMana'] = this.player2.mana;
-    io.to(this.player1.id).emit('gamestate', p1_data);
-    
-    var p2_data = {};
-    p2_data['mana'] = this.player2.mana;
-    p2_data['oppMana'] = this.player1.mana;
-    io.to(this.player2.id).emit('gamestate', p2_data);
-  }
-  
-  emitStateHand()
-  {
-    var p1_data = {};
-    p1_data['hand'] = this.player1.hand;
-    p1_data['oppHand'] = this.player2.hand.length;
-    io.to(this.player1.id).emit('gamestate', p1_data);
-    
-    var p2_data = {};
-    p2_data['hand'] = this.player2.hand;
-    p2_data['oppHand'] = this.player1.hand.length;
-    io.to(this.player2.id).emit('gamestate', p2_data);
-  }
-  
   emitState()
   {
     var p1_data = {};
@@ -382,8 +296,24 @@ class Game
     var i;
     for (i = 0; i < 40; i++)
     {
-      this.player1.deck.push(new Rusalka());
-      this.player2.deck.push(new Rusalka());
+      //this.player1.deck.push(new AstrocometDragon());
+      //this.player2.deck.push(new AstrocometDragon());
+      var r1 = Math.floor((Math.random() * 3) + 1);
+      if (r1 == 1)
+      {
+        this.player1.deck.push(new MightyShouter());
+        this.player2.deck.push(new MightyShouter());
+      }
+      if (r1 == 2)
+      {
+        this.player1.deck.push(new AquaHulcus());
+        this.player2.deck.push(new AquaHulcus());
+      }
+      if (r1 == 3)
+      {
+        this.player1.deck.push(new DeadlyFighterBraidClaw());
+        this.player2.deck.push(new DeadlyFighterBraidClaw());
+      }
     }
     shuffle(this.player1.deck);
     shuffle(this.player2.deck);
@@ -469,6 +399,79 @@ class Card
   }
 }
 
+class MightyShouter extends Card
+{
+  constructor()
+  {
+    super();
+    this.name = "Mighty Shouter";
+    this.type = "Creature";
+    this.color = "Green";
+    this.cost = 1;
+    this.power = 2000;
+    this.race = "Beast Folk";
+    this.text = "";
+  }
+}
+
+class AquaHulcus extends Card
+{
+  constructor()
+  {
+    super();
+    this.name = "Aqua Hulcus";
+    this.type = "Creature";
+    this.color = "Blue";
+    this.cost = 1;
+    this.power = 1000;
+    this.race = "Liquid People";
+    this.text = "OnEnter: Draw 1 card.";
+  }
+  
+  OnEnter(game, id)
+  {
+    if (game.player1.id == id)
+    {
+      game.drawCard(game.player1);
+    }
+    else if (game.player2.id == id)
+    {
+      game.drawCard(game.player2);
+    }
+    game.emitState();
+  }
+}
+
+class DeadlyFighterBraidClaw extends Card
+{
+  constructor()
+  {
+    super();
+    this.name = "Deadly Fighter Braid Claw";
+    this.type = "Creature";
+    this.color = "Red";
+    this.cost = 1;
+    this.power = 1000;
+    this.race = "Dragonoid";
+    //this.text = "";
+  }
+}
+
+class AstrocometDragon extends Card
+{
+  constructor()
+  {
+    super();
+    this.name = "Astrocomet Dragon";
+    this.type = "Creature";
+    this.color = "Red";
+    this.cost = 1;
+    this.power = 6000;
+    this.race = "Armored Dragon";
+    this.text = "Power attack +4000";
+  }
+}
+
 class Rusalka extends Card
 {
   constructor()
@@ -477,11 +480,11 @@ class Rusalka extends Card
     this.name = "Rusalka";
     this.type = "Creature";
     this.color = "Water";
-    var r1 = Math.floor((Math.random() * 2) + 1);
-    this.cost = r1;
-    this.power = r1*1000;
+    //var r1 = Math.floor((Math.random() * 2) + 1);
+    this.cost = 2;
+    this.power = 1000;
     this.race = "Trench Hunter";
-    this.text = "OnEnter: Draw a card.";
+    this.text = "OnEnter: Draw 1 card.";
   }
 
   OnEnter(game, id)
@@ -497,6 +500,61 @@ class Rusalka extends Card
     game.emitState();
   }
 }
+
+class Rusalka2 extends Card
+{
+  constructor()
+  {
+    super();
+    this.name = "Rusalka";
+    this.type = "Creature";
+    this.color = "Water";
+    //var r1 = Math.floor((Math.random() * 2) + 1);
+    this.cost = 3;
+    this.power = 1000;
+    this.race = "Trench Hunter";
+    this.text = "OnEnter: Destroy 1 random enemy creature.";
+  }
+
+  OnEnter(game, id)
+  {
+    if (game.player1.id == id)
+    {
+      var len = game.player2.field.length;
+      if (len > 0)
+      {
+        var r = Math.floor((Math.random() * len));
+        game.destroyCreature(game.player2, r);
+      }
+    }
+    else if (game.player2.id == id)
+    {
+      var len = game.player1.field.length;
+      if (len > 0)
+      {
+        var r = Math.floor((Math.random() * len));
+        game.destroyCreature(game.player1, r);
+      }
+    }
+    game.emitState();
+  }
+}
+
+class Rusalka3 extends Card
+{
+  constructor()
+  {
+    super();
+    this.name = "Rusalka";
+    this.type = "Creature";
+    this.color = "Water";
+    var r1 = Math.floor((Math.random() * 2) + 1);
+    this.cost = r1;
+    this.power = r1*1000;
+    this.race = "Trench Hunter";
+  }
+}
+
 
 var games = {};
 var queue = null;
@@ -530,7 +588,16 @@ io.on('connection', function(socket){
     var game = games[socket.id];
     if (game != null)
     {
-      game.playCard(socket.id, req.index);
+      if (socket.id == game.player1.id)
+      {
+        game.playCard(game.player1, game.player2, req.index);
+      }
+      else if (socket.id == game.player2.id)
+      {
+        game.playCard(game.player2, game.player1, req.index);
+      }
+      const used = process.memoryUsage().heapUsed / 1024 / 1024;
+      console.log(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
     }
   });
   
@@ -538,7 +605,14 @@ io.on('connection', function(socket){
     var game = games[socket.id];
     if (game != null)
     {
-      game.attackCreature(socket.id, req.from, req.to);
+      if (socket.id == game.player1.id)
+      {
+        game.attackCreature(game.player1, game.player2, req.from, req.to);
+      }
+      else if (socket.id == game.player2.id)
+      {
+        game.attackCreature(game.player2, game.player1, req.from, req.to);
+      }
     }
   });  
 
@@ -546,7 +620,14 @@ io.on('connection', function(socket){
     var game = games[socket.id];
     if (game != null)
     {
-      game.attackPlayer(socket.id, req.index);
+      if (socket.id == game.player1.id)
+      {
+        game.attackPlayer(game.player1, game.player2, req.index);
+      }
+      else if (socket.id == game.player2.id)
+      {
+        game.attackPlayer(game.player2, game.player1, req.index);
+      }
       if (game.winner != 0)
       {
         console.log("Winner: "+game.winner);
@@ -567,7 +648,14 @@ io.on('connection', function(socket){
     var game = games[socket.id];
     if (game != null)
     {
-      game.playMana(socket.id, req.index);
+      if (socket.id == game.player1.id)
+      {
+        game.playMana(game.player1, game.player2, req.index);
+      }
+      else if (socket.id == game.player2.id)
+      {
+        game.playMana(game.player2, game.player1, req.index);
+      }
     }
   });
   
@@ -575,7 +663,14 @@ io.on('connection', function(socket){
     var game = games[socket.id];
     if (game != null)
     {
-      game.nextPhase(socket.id);
+      if (socket.id == game.player1.id)
+      {
+        game.nextPhase(game.player1, game.player2);
+      }
+      else if (socket.id == game.player2.id)
+      {
+        game.nextPhase(game.player2, game.player1);
+      }
     }
   });
   
