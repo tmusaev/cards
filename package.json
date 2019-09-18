@@ -1,29 +1,32 @@
 {
-	"//1": "describes your app and its dependencies",
-	"//2": "https://docs.npmjs.com/files/package.json",
-	"//3": "updating this file will download and update your packages",
-	"name": "my-gomix-app",
-	"version": "0.0.1",
-	"description": "What am I about?",
-	"main": "server.js",
-	"scripts": {
-		"start": "node server.js"
-	},
-	"dependencies": {
-		"express": "^4.14.0",
-		"socket.io": "^1.7.2",
-		"jQuery": "^1.7.4",
-		"mongodb": "^2.2.16"
-	},
-	"engines": {
-		"node": "6.9.1"
-	},
-	"repository": {
-		"url": "https://gomix.com/#!/project/welcome-project"
-	},
-	"keywords": [
-		"node",
-		"gomix",
-		"express"
-	]
+  "//1": "describes your app and its dependencies",
+  "//2": "https://docs.npmjs.com/files/package.json",
+  "//3": "updating this file will download and update your packages",
+  "name": "my-gomix-app",
+  "version": "0.0.1",
+  "description": "What am I about?",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.14.0",
+    "socket.io": "^1.0",
+    "jQuery": "^1.7.4",
+    "mongodb": "^2.2.16",
+    "bcrypt": "^3.0.6",
+    "papaparse": "^5.0.2",
+    "antlr4": "^4.7.2"
+  },
+  "engines": {
+    "node": "6.9.1"
+  },
+  "repository": {
+    "url": "https://gomix.com/#!/project/welcome-project"
+  },
+  "keywords": [
+    "node",
+    "gomix",
+    "express"
+  ]
 }

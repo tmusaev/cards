@@ -1,0 +1,2 @@
+Aqua Seneschal	Creature	Blue	Cyber Lord	3	2000	Common	"Whenever this creature attacks, draw 1 card."
+Death Smoke	Spell	Purple		5		Uncommon	Destroy target untapped enemy creature.
