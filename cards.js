@@ -32,6 +32,7 @@ class Card
     this.attributes = [];
     this.atkindex = -9;
     this.validblocker = false;
+    this.skirmisher = false;
   }
   OnEnter(game, player, opp, c, index)
   {
@@ -583,6 +584,23 @@ class ReefEye extends Card
     this.text = "Blocker, Guard";
     this.blocker = true;
     this.guard = true;
+  }
+}
+
+class SunStalkSeed extends Card
+{
+  constructor()
+  {
+    super();
+    this.name = "Sun-Stalk Seed";
+    this.type = "Creature";
+    this.color = "Yellow";
+    this.cost = 2;
+    this.power = 3000;
+    this.race = "Star Sentinel";
+    this.text = "Blocker, Skirmisher";
+    this.blocker = true;
+    this.skirmisher = true;
   }
 }
 

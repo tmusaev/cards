@@ -42,12 +42,39 @@ function EndGame(game)
   {
     console.log("Winner: "+game.winner);
     console.log("Loser: "+game.loser);
+    
     var win_data = {};
     win_data['win'] = 1;
     io.to(game.winner).emit('gamestate', win_data);
+    
+    mongodb.MongoClient.connect(uri, function(err, db) {
+      if(err) throw err;
+      var users = db.collection('users');
+      users.find({username: players[game.winner]}).toArray(function(err, docs) {
+        if(err) throw err;
+        var numWins = docs[0].wins;
+        users.update({username: players[game.winner]}, {$set: {wins: numWins+1}}, function(err, result) {
+         if(err) throw err;
+        });
+      });
+    });
+    
+    mongodb.MongoClient.connect(uri, function(err, db) {
+      if(err) throw err;
+      var users = db.collection('users');
+      users.find({username: players[game.loser]}).toArray(function(err, docs) {
+        if(err) throw err;
+        var numLosses = docs[0].losses;
+        users.update({username: players[game.loser]}, {$set: {losses: numLosses+1}}, function(err, result) {
+         if(err) throw err;
+        });
+      });
+    });
+    
     var loss_data = {};
     loss_data['loss'] = 1;
     io.to(game.loser).emit('gamestate', loss_data);
+    
     delete games[game.winner];
     delete games[game.loser];
   }
@@ -489,7 +516,14 @@ io.on('connection', function(socket){
           data['wins'] = user['wins'];
           data['losses'] = user['losses'];
           data['gold'] = user['gold'];
-          data['decks'] = user['decks'];
+          var decks = {};
+          for (var key in user['decks']) {
+            var deck = user['decks'][key];
+            if (deck.length >= 40) {
+              decks[key] = deck;
+            }
+          }
+          data['decks'] = decks;
           io.to(socket.id).emit('stats', data);
         }
       });

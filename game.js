@@ -449,7 +449,7 @@ class Game
     if (player.id == this.turnPlayer.id && this.phase == phases.BATTLE)
     {
       var c = player.field[index];
-      if (c.canattack)
+      if (c.canattack && !c.skirmisher)
       {
         c.OnDeclareAttack(this, player, opp, c, -1);
         this.emitStateMyCreatureDeclareAtkPlayer(player, c, player.field.indexOf(c));
@@ -999,70 +999,70 @@ class Game
     //console.log(this.p1_deck);
     //console.log(this.p2_deck);
     
-    // for (var i = 0; i < this.p1_deck.length; i++)
-    // {
-    //   this.player1.deck.push(CardFactory(this.p1_deck[i].name));
-    // }
-    // for (var i = 0; i < this.p2_deck.length; i++)
-    // {
-    //   this.player2.deck.push(CardFactory(this.p2_deck[i].name));
-    // }
+    for (var i = 0; i < this.p1_deck.length; i++)
+    {
+      this.player1.deck.push(CardFactory(this.p1_deck[i].name));
+    }
+    for (var i = 0; i < this.p2_deck.length; i++)
+    {
+      this.player2.deck.push(CardFactory(this.p2_deck[i].name));
+    }
     
-    var fn_deck = [];
-    var wd_deck = [];
+//     var fn_deck = [];
+//     var wd_deck = [];
     
-    var text = fs.readFileSync("./firenature.txt").toString('utf-8');
-    var textByLine = text.split("\n")
-    for (var i = 0; i < textByLine.length; i++)
-    {
-      var line = textByLine[i];
-      var quantity = parseInt(line.slice(0,1));
-      var name = line.slice(2);
-      for (var j = 0; j < quantity; j++)
-      {
-        var c = CardFactory(name);
-        if (c != null && c != 'undefined')
-        {
-          //this.player1.deck.push(CardFactory(name));
-          fn_deck.push(CardFactory(name));
-        }
-      }
-    }
-    var text = fs.readFileSync("./waterdark.txt").toString('utf-8');
-    var textByLine = text.split("\n")
-    for (var i = 0; i < textByLine.length; i++)
-    {
-      var line = textByLine[i];
-      var quantity = parseInt(line.slice(0,1));
-      var name = line.slice(2);
-      for (var j = 0; j < quantity; j++)
-      {
-        var c = CardFactory(name);
-        if (c != null && c != 'undefined')
-        {
-          //this.player2.deck.push(CardFactory(name));
-          wd_deck.push(CardFactory(name));
-        }
-      }
-    }
-    var r = Math.floor((Math.random() * 2) + 1);
-    if (r == 1)
-    {
-      this.player1.deck = fn_deck;
-    }  
-    else
-    {
-      this.player1.deck = wd_deck;
-    }
-    r = Math.floor((Math.random() * 2) + 1);
-    if (r == 1)
-    {
-      this.player2.deck = fn_deck;
-    }  
-    else
-    {
-      this.player2.deck = wd_deck;
-    }
+//     var text = fs.readFileSync("./firenature.txt").toString('utf-8');
+//     var textByLine = text.split("\n")
+//     for (var i = 0; i < textByLine.length; i++)
+//     {
+//       var line = textByLine[i];
+//       var quantity = parseInt(line.slice(0,1));
+//       var name = line.slice(2);
+//       for (var j = 0; j < quantity; j++)
+//       {
+//         var c = CardFactory(name);
+//         if (c != null && c != 'undefined')
+//         {
+//           //this.player1.deck.push(CardFactory(name));
+//           fn_deck.push(CardFactory(name));
+//         }
+//       }
+//     }
+//     var text = fs.readFileSync("./waterdark.txt").toString('utf-8');
+//     var textByLine = text.split("\n")
+//     for (var i = 0; i < textByLine.length; i++)
+//     {
+//       var line = textByLine[i];
+//       var quantity = parseInt(line.slice(0,1));
+//       var name = line.slice(2);
+//       for (var j = 0; j < quantity; j++)
+//       {
+//         var c = CardFactory(name);
+//         if (c != null && c != 'undefined')
+//         {
+//           //this.player2.deck.push(CardFactory(name));
+//           wd_deck.push(CardFactory(name));
+//         }
+//       }
+//     }
+    // var r = Math.floor((Math.random() * 2) + 1);
+    // if (r == 1)
+    // {
+    //   this.player1.deck = fn_deck;
+    // }  
+    // else
+    // {
+    //   this.player1.deck = wd_deck;
+    // }
+    // r = Math.floor((Math.random() * 2) + 1);
+    // if (r == 1)
+    // {
+    //   this.player2.deck = fn_deck;
+    // }  
+    // else
+    // {
+    //   this.player2.deck = wd_deck;
+    // }
     // var i;
     // for (i = 0; i < 20; i++)
     // {
