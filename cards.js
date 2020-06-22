@@ -33,6 +33,7 @@ class Card
     this.atkindex = -9;
     this.validblocker = false;
     this.skirmisher = false;
+    this.id = "";
   }
   OnEnter(game, player, opp, c, index)
   {
@@ -115,6 +116,20 @@ class PyroTrooper extends Card
     super.OnEndAttack(game, player, opp, c, index);
     this.power -= 2000;
     game.emitState();
+  }
+}
+
+class AlcadeusWingedJustice extends Card
+{
+  constructor()
+  {
+    super();
+    this.name = "Alcadeus, Winged Justice";
+    this.type = "Creature";
+    this.color = "Yellow";
+    this.cost = 7;
+    this.power = 6000;
+    this.race = "Skyforce Champion";
   }
 }
 
@@ -1322,7 +1337,7 @@ const cardMap = {
 };
 
 
-module.exports = function CardFactory(name)
+module.exports = function CardFactory(name, idDict)
 {
   if (name == 'collection')
   {

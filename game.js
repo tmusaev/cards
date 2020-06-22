@@ -690,7 +690,8 @@ class Game
     }
     console.log("bounce index: "+index);
     var c = player.field.splice(index, 1)[0];
-    player.hand.push(CardFactory(c.name));
+    //player.hand.push(CardFactory(c.name));
+    player.hand.push(this.cardFactory.GetCard(c.name));
     c.OnExit(this, player, opp, c);
   }
   
@@ -999,14 +1000,16 @@ class Game
     //console.log(this.p1_deck);
     //console.log(this.p2_deck);
     
-    for (var i = 0; i < this.p1_deck.length; i++)
-    {
-      this.player1.deck.push(CardFactory(this.p1_deck[i].name));
-    }
-    for (var i = 0; i < this.p2_deck.length; i++)
-    {
-      this.player2.deck.push(CardFactory(this.p2_deck[i].name));
-    }
+    //Prod
+    // for (var i = 0; i < this.p1_deck.length; i++)
+    // {
+    //   this.player1.deck.push(this.cardFactory.GetCard(this.p1_deck[i].name));
+    // }
+    // for (var i = 0; i < this.p2_deck.length; i++)
+    // {
+    //   this.player2.deck.push(this.cardFactory.GetCard(this.p2_deck[i].name));
+    // }
+    //Prod
     
 //     var fn_deck = [];
 //     var wd_deck = [];
@@ -1063,17 +1066,17 @@ class Game
     // {
     //   this.player2.deck = wd_deck;
     // }
-    // var i;
-    // for (i = 0; i < 20; i++)
-    // {
-    //   this.player1.deck.push(CardFactory("Pyro Trooper"));
-    //   this.player2.deck.push(CardFactory("Flametropus"));
-    //  }
-    // for (i = 0; i < 20; i++)
-    // {
-    //   this.player1.deck.push(CardFactory("Pyro Trooper"));
-    //   this.player2.deck.push(CardFactory("Flametropus"));
-    // }
+    var i;
+    for (i = 0; i < 20; i++)
+    {
+      this.player1.deck.push(this.cardFactory.GetCard("Aqua Seneschal"));
+      this.player1.deck.push(this.cardFactory.GetCard("Frogzooka"));
+     }
+    for (i = 0; i < 20; i++)
+    {
+      this.player2.deck.push(this.cardFactory.GetCard("Aqua Seneschal"));
+      this.player2.deck.push(this.cardFactory.GetCard("Frogzooka"));
+    }
     shuffle(this.player1.deck);
     shuffle(this.player2.deck);
     

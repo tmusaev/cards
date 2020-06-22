@@ -16,7 +16,8 @@
     "mongodb": "^2.2.16",
     "bcrypt": "^3.0.6",
     "papaparse": "^5.0.2",
-    "antlr4": "^4.7.2"
+    "antlr4": "^4.7.2",
+    "xmldom": "^0.3.0"
   },
   "engines": {
     "node": "6.9.1"

@@ -21,15 +21,43 @@ var Game = require('./game.js');
 var CardFactory = require('./cardfactory.js')
 var fs = require('fs');
 var Papa = require('papaparse');
-const file = fs.createReadStream('./tvr.txt');
+var DOMParser = require('xmldom').DOMParser;
+
+var XMLParser = new DOMParser();
+var tvrFile = fs.readFileSync('./sets/tvr.xml', 'utf8');
+var tvrDoc = XMLParser.parseFromString(tvrFile, 'text/xml');
+var allcards = tvrDoc.getElementsByTagName("card");
+
+var idDict = {};
+
+for (var i = 0; i < allcards.length; i++) {
+  var name = allcards[i].getAttribute("name");
+  var id = allcards[i].getAttribute("id");
+  idDict[name] = id;
+  var properties = allcards[i].getElementsByTagName("property");
+  for (var j = 0; j < properties.length; j++) {
+    switch(properties[j].getAttribute("name")) {
+      case "Rules":
+        //console.log(properties[j].getAttribute("value"));
+        break;
+    }
+  }
+}
+
+//const file = fs.createReadStream('./tvr.txt');
 
 var cardFactory = new CardFactory();
 
-Papa.parse(file, {
-  complete: function(results) {
-    cardFactory.Create(results);
-  }
-});
+cardFactory.Create(allcards);
+
+// var aqua = cardFactory.GetCard("Aqua Seneschal");
+// console.log(aqua.OnEnter);
+
+// Papa.parse(file, {
+//   complete: function(results) {
+//     cardFactory.Create(results);
+//   }
+// });
 
 var games = {};
 var players = {};
@@ -422,10 +450,16 @@ io.on('connection', function(socket){
   socket.on('EnterCollection', function() {
     console.log(players[socket.id]+' entered collection: '+socket.id);
     var collection = [];
-    var map = Cards('collection');
+    //var map = Cards('collection');
+    var map = cardFactory.GetCard('collection');
     for (var key in map)
     {
-      collection.push(new map[key]());
+      //var card = new map[key];
+      //card.id = idDict[card.name];
+      //collection.push(new map[key]());
+      //console.log(card.id);
+      //collection.push(new map[key]());
+      collection.push(map[key]);
     }
     collection.sort(function(x, y) {
       var colorMap = {};
@@ -460,6 +494,7 @@ io.on('connection', function(socket){
       }
       return 0;
     });
+    console.log(collection);
     io.to(socket.id).emit('collection', collection);
   });
   
