@@ -14,7 +14,7 @@
     "socket.io": "^1.0",
     "jQuery": "^1.7.4",
     "mongodb": "^2.2.16",
-    "bcrypt": "^3.0.6",
+    "bcrypt": "^5.0.0",
     "papaparse": "^5.0.2",
     "antlr4": "^4.7.2"
   },
