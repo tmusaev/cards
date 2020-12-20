@@ -36,6 +36,9 @@ class Card
     this.validblocker = false;
     this.skirmisher = false;
     this.id = "";
+    this.filters = [];
+    this.onAttackAbilities = [];
+    this.onEnterAbilities = [];
   }
   OnEnter(game, player, opp, c, index)
   {
@@ -101,9 +104,10 @@ module.exports = function CardFactory()
 
   this.Create = function(results) {
     
-    for (var i = 0; i < 2/*results.length*/; i++) {
+    for (var i = 0; i < 10/*9results.length*/; i++) {
       var c = new Card();
       c.name = results[i].getAttribute("name");
+      console.log(c.name);
       c.id = results[i].getAttribute("id");
 
       var properties = results[i].getElementsByTagName("property");
@@ -126,7 +130,7 @@ module.exports = function CardFactory()
             break;
           case "Rules":
             var rules = properties[j].getAttribute("value");
-            c.text = rules;
+            //c.text = rules;
             console.log(rules);
             ParseRules(c, rules);
             break;
@@ -159,12 +163,6 @@ module.exports = function CardFactory()
       return this.cardMap;
     }
     else if (name in this.cardMap) {
-      //return Object.create(this.cardMap[name]);
-      //return this.cardMap[name];
-      //function copy() {}
-      //copy.prototype = this.cardMap[name];
-      //return Object.assign(copy, this.cardMap[name]);
-      //return completeAssign({}, this.cardMap[name]);
       return Object.assign(Object.create(Card.prototype), this.cardMap[name]);
     }
     else
@@ -174,24 +172,4 @@ module.exports = function CardFactory()
     }
   };
    
-}
-
-// This is an assign function that copies full descriptors
-function completeAssign(target, ...sources) {
-  sources.forEach(source => {
-    let descriptors = Object.keys(source).reduce((descriptors, key) => {
-      descriptors[key] = Object.getOwnPropertyDescriptor(source, key);
-      return descriptors;
-    }, {});
-    
-    // By default, Object.assign copies enumerable Symbols, too
-    Object.getOwnPropertySymbols(source).forEach(sym => {
-      let descriptor = Object.getOwnPropertyDescriptor(source, sym);
-      if (descriptor.enumerable) {
-        descriptors[sym] = descriptor;
-      }
-    });
-    Object.defineProperties(target, descriptors);
-  });
-  return target;
 }

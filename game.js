@@ -213,14 +213,22 @@ class Game
             opp.attribList[i].ApplyAttribute(this, opp, player, c);
           }
           this.emitState();
-          c.OnEnter(this, player, opp, c, player.field.length-1);
+          //c.OnEnter(this, player, opp, c, player.field.length-1);
+          for (var i = 0; i < c.onEnterAbilities.length; i++) 
+          {
+            this.pushStack(c.onEnterAbilities[i], player, opp);
+          }
           this.resolveStack();
         }
         else if (c.type == "Spell")
         {
           player.hand.splice(index, 1)[0];
           player.mana.available -= c.cost;
-          this.stack.push(new StackObj(c, player, opp));
+          //this.stack.push(new StackObj(c, player, opp));
+          for (var i = 0; i < c.onEnterAbilities.length; i++) 
+          {
+            this.pushStack(c.onEnterAbilities[i], player, opp);
+          }
           this.emitState();
           this.resolveStack();
           //c.OnEnter(this, player, opp, c, -1);
@@ -454,7 +462,11 @@ class Game
         c.OnDeclareAttack(this, player, opp, c, -1);
         this.emitStateMyCreatureDeclareAtkPlayer(player, c, player.field.indexOf(c));
         this.emitStateOppCreatureDeclareAtkPlayer(opp, c, player.field.indexOf(c));
-        c.OnAttack(this, player, opp, c, index);
+        //c.OnAttack(this, player, opp, c, index);
+        for (var i = 0; i < c.onAttackAbilities.length; i++) 
+        {
+          this.pushStack(c.onAttackAbilities[i], player, opp);
+        }
         this.resolveStack();
         var blockers = this.getBlockers(c, opp, -1);
         this.emitState();
@@ -505,7 +517,11 @@ class Game
         c.OnDeclareAttack(this, player, opp, c, to);
         this.emitStateMyCreatureDeclareAtkToCreature(player, c, from, to);
         this.emitStateOppCreatureDeclareAtkToCreature(opp, c, from, to);
-        c.OnAttack(this, player, opp, c, from);
+        //c.OnAttack(this, player, opp, c, from);
+        for (var i = 0; i < c.onAttackAbilities.length; i++) 
+        {
+          this.pushStack(c.onAttackAbilities[i], player, opp);
+        }
         this.resolveStack();
         var blockers = this.getBlockers(c, opp, to);
         this.emitState();
@@ -594,6 +610,19 @@ class Game
     this.emitState();
   }
   
+  bounce(player, opp, index)
+  {
+    if (index[0] == 0)
+    {
+      this.bounceCreature(player, opp, index[1]);
+    }
+    else if (index[0] == 1)
+    {
+      this.bounceCreature(opp, player, index[1]);
+    }
+    this.emitState();
+  }
+  
   trap(player, opp, index)
   {
     if (index[0] == 0)
@@ -607,35 +636,58 @@ class Game
     //this.emitState();
   }
   
+  checkFilters(player, opp, card, filters)
+  {
+    for (var j = 0; j < filters.length; j++) {
+      if (!filters[j](card, player, opp)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
   targettedEffect(player, opp, card, index, filters)
   {
     var targets = [];
-    if (!filters.includes("enemy"))
-    {
-      for (var i = 0; i < player.field.length; i++)
-      {
-        if (filters.includes("untapped"))
-        {
-          if (!opp.field[i].tapped)
-          {
-            targets.push([1,i]);
-          }
-        }
+    
+    for (var i = 0; i < player.field.length; i++) {
+      if (this.checkFilters(player, opp, player.field[i], filters)) {
+        targets.push([0,i]);
       }
     }
-    if (!filters.includes("friendly"))
-    {
-      for (var i = 0; i < opp.field.length; i++)
-      {
-        if (filters.includes("untapped"))
-        {
-          if (!opp.field[i].tapped)
-          {
-            targets.push([1,i]);
-          }
-        }
+    
+    for (var i = 0; i < opp.field.length; i++) {
+      if (this.checkFilters(player, opp, opp.field[i], filters)) {
+        targets.push([1,i]);
       }
     }
+    
+    // if (!filters.includes("enemy"))
+    // {
+    //   for (var i = 0; i < player.field.length; i++)
+    //   {
+    //     if (filters.includes("untapped"))
+    //     {
+    //       if (!player.field[i].tapped)
+    //       {
+    //         targets.push([0,i]);
+    //       }
+    //     }
+    //   }
+    // }
+    // if (!filters.includes("friendly"))
+    // {
+    //   for (var i = 0; i < opp.field.length; i++)
+    //   {
+    //     if (filters.includes("untapped"))
+    //     {
+    //       if (!opp.field[i].tapped)
+    //       {
+    //         targets.push([1,i]);
+    //       }
+    //     }
+    //   }
+    // }
     if (targets.length > 0)
     {
       this.requestTargets(player, opp, targets, 1, card, index);
@@ -647,6 +699,10 @@ class Game
     if (action == 'destroy')
     {
       this.destroy(player, opp, index);
+    }
+    else if (action == 'bounce')
+    {
+      this.bounce(player, opp, index);
     }
   }
   
@@ -1069,13 +1125,13 @@ class Game
     var i;
     for (i = 0; i < 20; i++)
     {
-      this.player1.deck.push(this.cardFactory.GetCard("Aqua Seneschal"));
-      this.player1.deck.push(this.cardFactory.GetCard("Frogzooka"));
+      this.player1.deck.push(this.cardFactory.GetCard("Teleport"));
+      this.player1.deck.push(this.cardFactory.GetCard("Hydro Spy"));
      }
     for (i = 0; i < 20; i++)
     {
+      this.player2.deck.push(this.cardFactory.GetCard("Teleport"));
       this.player2.deck.push(this.cardFactory.GetCard("Aqua Seneschal"));
-      this.player2.deck.push(this.cardFactory.GetCard("Frogzooka"));
     }
     shuffle(this.player1.deck);
     shuffle(this.player2.deck);

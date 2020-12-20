@@ -47,6 +47,33 @@ RulesListener.prototype.exitTriggeredAbility = function(ctx) {
 };
 
 
+// Enter a parse tree produced by RulesParser#oneShotAbility.
+RulesListener.prototype.enterOneShotAbility = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#oneShotAbility.
+RulesListener.prototype.exitOneShotAbility = function(ctx) {
+};
+
+
+// Enter a parse tree produced by RulesParser#staticAbility.
+RulesListener.prototype.enterStaticAbility = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#staticAbility.
+RulesListener.prototype.exitStaticAbility = function(ctx) {
+};
+
+
+// Enter a parse tree produced by RulesParser#unblockable.
+RulesListener.prototype.enterUnblockable = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#unblockable.
+RulesListener.prototype.exitUnblockable = function(ctx) {
+};
+
+
 // Enter a parse tree produced by RulesParser#trigger.
 RulesListener.prototype.enterTrigger = function(ctx) {
 };
@@ -65,12 +92,30 @@ RulesListener.prototype.exitAttackTrigger = function(ctx) {
 };
 
 
+// Enter a parse tree produced by RulesParser#enterTrigger.
+RulesListener.prototype.enterEnterTrigger = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#enterTrigger.
+RulesListener.prototype.exitEnterTrigger = function(ctx) {
+};
+
+
 // Enter a parse tree produced by RulesParser#action.
 RulesListener.prototype.enterAction = function(ctx) {
 };
 
 // Exit a parse tree produced by RulesParser#action.
 RulesListener.prototype.exitAction = function(ctx) {
+};
+
+
+// Enter a parse tree produced by RulesParser#bounceAction.
+RulesListener.prototype.enterBounceAction = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#bounceAction.
+RulesListener.prototype.exitBounceAction = function(ctx) {
 };
 
 
@@ -89,6 +134,24 @@ RulesListener.prototype.enterDrawTwo = function(ctx) {
 
 // Exit a parse tree produced by RulesParser#drawTwo.
 RulesListener.prototype.exitDrawTwo = function(ctx) {
+};
+
+
+// Enter a parse tree produced by RulesParser#filter.
+RulesListener.prototype.enterFilter = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#filter.
+RulesListener.prototype.exitFilter = function(ctx) {
+};
+
+
+// Enter a parse tree produced by RulesParser#levelFilter.
+RulesListener.prototype.enterLevelFilter = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#levelFilter.
+RulesListener.prototype.exitLevelFilter = function(ctx) {
 };
 
 

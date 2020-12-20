@@ -3,8 +3,28 @@ var RulesLexer = require('./RulesLexer').RulesLexer
 var RulesListener = require('./RulesListener').RulesListener
 var RulesParser = require('./RulesParser').RulesParser
 
+class Ability {
+  
+  constructor() {
+    this.color = "";
+    this.id = "";
+    this.filters = [];
+  }
+  
+  Resolve(game, player, opp, c, index) {
+    
+  }
+  
+  TargetReturned(game, player, opp, index) {
+
+  };
+  
+}
+
+
 var rulesListener = function(c) {
   this.c = c;
+  this.currentAbilityTrigger = "";
 //   this.keywords = [];
   
 //   this.getKeywords = function() {
@@ -72,8 +92,31 @@ rulesListener.prototype.enterRules = function(ctx) {
 }
 
 rulesListener.prototype.enterAbility = function(ctx) {
+  this.currentAbility = new Ability();
+  this.currentAbility.color = this.c.color;
+  this.currentAbility.id = this.c.id;
+
   if (ctx.triggeredAbility() != null) {
     ctx.triggeredAbility().enterRule(this);
+  }
+  if (ctx.oneShotAbility() != null) {
+    ctx.oneShotAbility().enterRule(this);
+  }
+  if (ctx.staticAbility() != null) {
+    ctx.staticAbility().enterRule(this);
+  }
+  
+  if (this.currentAbilityTrigger == "attack") {
+    //console.log("currentAbilityTrigger == attack");
+    this.c.onAttackAbilities.push(this.currentAbility);
+  }
+  else if (this.currentAbilityTrigger == "enter") {
+    //console.log("currentAbilityTrigger == enter");
+    this.c.onEnterAbilities.push(this.currentAbility);
+  }
+  else { //Handle spells by defaulting to on enter abilities
+    //console.log("currentAbilityTrigger == enter");
+    this.c.onEnterAbilities.push(this.currentAbility);
   }
 }
 
@@ -82,9 +125,112 @@ rulesListener.prototype.enterTriggeredAbility = function(ctx) {
   ctx.action().enterRule(this);
 }
 
-rulesListener.prototype.enterAction = function(ctx) {
-  this.c.Resolve = function(game, player, opp, c, index)
+rulesListener.prototype.enterOneShotAbility = function(ctx) {
+  ctx.action().enterRule(this);
+}
+
+rulesListener.prototype.enterStaticAbility = function(ctx) {
+  if (ctx.unblockable() != null) {
+    ctx.unblockable().enterRule(this);
+  }
+}
+
+rulesListener.prototype.enterUnblockable = function(ctx) {
+  this.c.text += ctx.UNBLOCKABLE().getText() + '.';
+  this.c.ValidBlocker = function(c)
   {
+    return false;
+  }
+}
+
+rulesListener.prototype.enterAction = function(ctx) {
+  if (ctx.drawOne() != null) {
+    ctx.drawOne().enterRule(this);
+  }
+  if (ctx.drawTwo() != null) {
+    ctx.drawTwo().enterRule(this);
+  }
+  if (ctx.bounceAction() != null) {
+    ctx.bounceAction().enterRule(this);
+  }
+}
+
+rulesListener.prototype.enterBounceAction = function(ctx) {
+  this.c.text += ctx.BOUNCEPRE().getText();
+  var i = 0;
+  while (ctx.filter(i) != null) {
+    ctx.filter(i).enterRule(this);
+    i++;
+  }
+  this.c.text += " "+ctx.BOUNCEPOST().getText();
+  
+  this.currentAbility.TargetReturned = function(game, player, opp, index){
+    game.resolveAction(player, opp, index, 'bounce');
+  };
+  
+  this.currentAbility.Resolve = function(game, player, opp, card, index){
+    game.targettedEffect(player, opp, card, index, this.filters);
+  };
+  
+}
+
+rulesListener.prototype.enterFilter = function(ctx) {
+  if (ctx.levelFilter() != null) {
+    ctx.levelFilter().enterRule(this);
+  }
+  else {
+    this.c.text += " "+ctx.getText();
+    switch (ctx.getText()) {
+      case 'untapped':
+        this.currentAbility.filters.push(function(c, player, opp) {
+          return !c.tapped;
+        });
+        break;
+      case 'tapped':
+        this.currentAbility.filters.push(function(c, player, opp) {
+          return c.tapped;
+        });
+        break;
+      case 'enemy':
+        this.currentAbility.filters.push(function(c, player, opp) {
+          return (opp.field.indexOf(c) != -1);
+        });
+        break;
+    }
+  }
+}
+
+rulesListener.prototype.enterLevelFilter = function(ctx) {
+  this.c.text += " "+ctx.getText();
+  var level = parseInt(ctx.INTEGER().getText());
+  var orLess = (ctx.ORLESS() != null);
+  var orMore = (ctx.ORMORE() != null);
+  this.currentAbility.filters.push(function(c, player, opp) {
+    if (orLess) {
+      return c.cost <= level;
+    }
+    else if (orMore) {
+      return c.cost >= level;
+    }
+    else {
+      return c.cost == level;
+    }
+  });
+}
+
+rulesListener.prototype.enterDrawOne = function(ctx) {
+  this.c.text += ctx.getText() + ".";
+  this.currentAbility.Resolve = function(game, player, opp, c, index)
+  {
+    game.drawCard(player);
+  }
+}
+
+rulesListener.prototype.enterDrawTwo = function(ctx) {
+  this.c.text += ctx.getText() + ".";
+  this.currentAbility.Resolve = function(game, player, opp, c, index)
+  {
+    game.drawCard(player);
     game.drawCard(player);
   }
 }
@@ -93,13 +239,29 @@ rulesListener.prototype.enterTrigger = function(ctx) {
   if (ctx.attackTrigger() != null) {
     ctx.attackTrigger().enterRule(this);
   }
+  if (ctx.enterTrigger() != null) {
+    ctx.enterTrigger().enterRule(this);
+  }
 }
 
 rulesListener.prototype.enterAttackTrigger = function(ctx) {
-  this.c.OnAttack = function(game, player, opp, c, index)
-  {
-    game.pushStack(c, player, opp);
-  }
+  //console.log("enterAttackTrigger");
+  this.c.text += ctx.getText() + " ";
+  this.currentAbilityTrigger = "attack";
+  // this.c.OnAttack = function(game, player, opp, c, index)
+  // {
+  //   game.pushStack(c, player, opp);
+  // }
+}
+
+rulesListener.prototype.enterEnterTrigger = function(ctx) {
+  //console.log("enterEnterTrigger");
+  this.c.text += ctx.getText() + " ";
+  this.currentAbilityTrigger = "enter";
+  // this.c.OnEnter = function(game, player, opp, c, index)
+  // {
+  //   game.pushStack(c, player, opp);
+  // }
 }
 
 // RecipientListener.prototype.enterRecipient = function(ctx) {
@@ -123,12 +285,16 @@ rulesListener.prototype.enterAttackTrigger = function(ctx) {
 
 rulesListener.prototype.enterKeyword = function(ctx) {
   //this.keywords.push(ctx.getText());
+  this.c.text += ctx.getText()+". ";
   switch (ctx.getText()) {
       case 'Blocker':
         this.c.blocker = true;
         break;
       case 'Guard':
         this.c.guard = true;
+        break;
+      case 'Shield Blast':
+        this.c.shieldblast = true;
         break;
   }
 }

@@ -14,7 +14,8 @@ var listener = http.listen(process.env.PORT, function () {
   console.log('Your app is listening on port ' + listener.address().port);
 });
 
-var uri = 'mongodb://'+process.env.USER+':'+process.env.PASS+'@'+process.env.HOST+':'+process.env.PT+'/'+process.env.DB;
+//var uri = 'mongodb://'+process.env.USER+':'+process.env.PASS+'@'+process.env.HOST+':'+process.env.PT+'/'+process.env.DB;
+var uri = "mongodb://admin:admin@cards-shard-00-00.4txw5.mongodb.net:27017,cards-shard-00-01.4txw5.mongodb.net:27017,cards-shard-00-02.4txw5.mongodb.net:27017/cards?ssl=true&replicaSet=atlas-w43ol7-shard-0&authSource=admin&retryWrites=true&w=majority";
 
 var Cards = require('./cards.js');
 var Game = require('./game.js');
@@ -50,8 +51,8 @@ var cardFactory = new CardFactory();
 
 cardFactory.Create(allcards);
 
-// var aqua = cardFactory.GetCard("Aqua Seneschal");
-// console.log(aqua.OnEnter);
+//var c = cardFactory.GetCard("Ice Blade");
+//console.log(c);
 
 // Papa.parse(file, {
 //   complete: function(results) {
@@ -554,7 +555,7 @@ io.on('connection', function(socket){
           var decks = {};
           for (var key in user['decks']) {
             var deck = user['decks'][key];
-            if (deck.length >= 40) {
+            if (deck.length >= 0) {
               decks[key] = deck;
             }
           }
