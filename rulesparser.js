@@ -6,12 +6,15 @@ var RulesParser = require('./RulesParser').RulesParser
 class Ability {
   
   constructor() {
+    this.name = "";
+    this.type = "";
     this.color = "";
     this.id = "";
+    this.text = "";
     this.filters = [];
   }
   
-  Resolve(game, player, opp, c, index) {
+  Resolve(game, player, opp, ability, source, index) {
     
   }
   
@@ -38,38 +41,6 @@ var rulesListener = function(c) {
 rulesListener.prototype = Object.create(RulesListener.prototype);
 rulesListener.prototype.constructor = rulesListener;
 
-// KeywordListener.prototype = Object.create(RulesListener.prototype);
-// KeywordListener.prototype.constructor = rulesListener;
-
-// AbilityListener.prototype = Object.create(RulesListener.prototype);
-// AbilityListener.prototype.constructor = rulesListener;
-
-// TriggeredAbilityListener.prototype = Object.create(RulesListener.prototype);
-// TriggeredAbilityListener.prototype.constructor = rulesListener;
-
-// // continue inheriting default listener
-// EffListener.prototype = Object.create(EffectListener.prototype);
-// EffListener.prototype.constructor = EffListener;
-
-// ActionListener.prototype = Object.create(EffectListener.prototype);
-// ActionListener.prototype.constructor = EffListener;
-
-// RecipientListener.prototype = Object.create(EffectListener.prototype);
-// RecipientListener.prototype.constructor = EffListener;
-
-// FilterListener.prototype = Object.create(EffectListener.prototype);
-// FilterListener.prototype.constructor = EffListener;
-
-// EffListener.prototype.enterEffect = function(ctx) {
-//   //console.log(ctx.getText());
-//   var actionListener = new ActionListener();
-//   var recipientListener = new RecipientListener();
-//   ctx.action().enterRule(actionListener);
-//   ctx.recipient().enterRule(recipientListener);
-//   this.action = actionListener.getAction().toLowerCase();
-//   this.filters = recipientListener.getFilters();
-// };
-
 rulesListener.prototype.enterRules = function(ctx) {
   //console.log(ctx.getText());
   //console.log(this.c);
@@ -78,6 +49,7 @@ rulesListener.prototype.enterRules = function(ctx) {
   
   var i = 0;
   while (ctx.keyword(i) != null) {
+    console.log("keyword found");
     ctx.keyword(i).enterRule(this);
     i++;
   }
@@ -93,6 +65,8 @@ rulesListener.prototype.enterRules = function(ctx) {
 
 rulesListener.prototype.enterAbility = function(ctx) {
   this.currentAbility = new Ability();
+  this.currentAbility.name = this.c.name;
+  this.currentAbility.type = this.c.type;
   this.currentAbility.color = this.c.color;
   this.currentAbility.id = this.c.id;
 
@@ -114,6 +88,9 @@ rulesListener.prototype.enterAbility = function(ctx) {
     //console.log("currentAbilityTrigger == enter");
     this.c.onEnterAbilities.push(this.currentAbility);
   }
+  else if (this.currentAbilityTrigger == "endAttack") {
+    this.c.onEndAttackAbilities.push(this.currentAbility);
+  }
   else { //Handle spells by defaulting to on enter abilities
     //console.log("currentAbilityTrigger == enter");
     this.c.onEnterAbilities.push(this.currentAbility);
@@ -121,11 +98,23 @@ rulesListener.prototype.enterAbility = function(ctx) {
 }
 
 rulesListener.prototype.enterTriggeredAbility = function(ctx) {
-  ctx.trigger().enterRule(this);
-  ctx.action().enterRule(this);
+  if (ctx.trigger() != null) {
+    console.log("trigger found");
+    ctx.trigger().enterRule(this);
+  }
+  if (ctx.action() != null) {
+    console.log("action found");
+    ctx.action().enterRule(this);
+  }
+
+  if (ctx.endAtkBanish() != null) {
+    console.log("endAtkBanish found");
+    ctx.endAtkBanish().enterRule(this);
+  }
 }
 
 rulesListener.prototype.enterOneShotAbility = function(ctx) {
+  console.log("enterOneShotAbility");
   ctx.action().enterRule(this);
 }
 
@@ -133,6 +122,19 @@ rulesListener.prototype.enterStaticAbility = function(ctx) {
   if (ctx.unblockable() != null) {
     ctx.unblockable().enterRule(this);
   }
+}
+
+rulesListener.prototype.enterEndAtkBanish = function(ctx) {
+  console.log("enterEndAtkBanish");
+  this.c.text += ctx.ENDATKBANISH().getText() + '.';
+  this.currentAbility.text += ctx.ENDATKBANISH().getText() + '.';
+  this.currentAbilityTrigger = "endAttack";
+  
+  this.currentAbility.Resolve = function(game, player, opp, ability, source, index){
+    game.destroyCreature(player, opp, player.field.indexOf(source));
+  };  
+  
+  //this.c.onEndAttackAbilities.push(this.currentAbility);
 }
 
 rulesListener.prototype.enterUnblockable = function(ctx) {
@@ -153,23 +155,67 @@ rulesListener.prototype.enterAction = function(ctx) {
   if (ctx.bounceAction() != null) {
     ctx.bounceAction().enterRule(this);
   }
+  if (ctx.banishAction() != null) {
+    ctx.banishAction().enterRule(this);
+  }
+  if (ctx.oppChooseDiscard() != null) {
+    ctx.oppChooseDiscard().enterRule(this);
+  }
+  this.c.text += ". ";
+  this.currentAbility.text += ".";
+}
+
+rulesListener.prototype.enterOppChooseDiscard = function(ctx) {
+  console.log("enterOppChooseDiscard");
+  
+  //todo: quantity
+  
+  this.currentAbility.Resolve = function(game, player, opp, ability, source, index){
+    if (opp.hand.length > 0) {
+      game.requestTargetsInHand(opp, player, 1, ability);
+    }
+  };
+  
+  this.currentAbility.TargetReturned = function(game, player, opp, index){
+    game.discardCard(player, opp, index[1]);
+  };
+}
+
+rulesListener.prototype.enterBanishAction = function(ctx) {
+  this.c.text += ctx.BANISH().getText();
+  this.currentAbility.text += ctx.BANISH().getText();
+  var i = 0;
+  while (ctx.filter(i) != null) {
+    ctx.filter(i).enterRule(this);
+    i++;
+  }  
+  
+  this.currentAbility.TargetReturned = function(game, player, opp, index){
+    game.resolveAction(player, opp, index, 'destroy');
+  };
+  
+  this.currentAbility.Resolve = function(game, player, opp, ability, source, index){
+    game.targettedEffect(player, opp, ability, index, this.filters);
+  };  
 }
 
 rulesListener.prototype.enterBounceAction = function(ctx) {
   this.c.text += ctx.BOUNCEPRE().getText();
+  this.currentAbility.text += ctx.BOUNCEPRE().getText();
   var i = 0;
   while (ctx.filter(i) != null) {
     ctx.filter(i).enterRule(this);
     i++;
   }
   this.c.text += " "+ctx.BOUNCEPOST().getText();
+  this.currentAbility.text += " "+ctx.BOUNCEPOST().getText();
   
   this.currentAbility.TargetReturned = function(game, player, opp, index){
     game.resolveAction(player, opp, index, 'bounce');
   };
   
-  this.currentAbility.Resolve = function(game, player, opp, card, index){
-    game.targettedEffect(player, opp, card, index, this.filters);
+  this.currentAbility.Resolve = function(game, player, opp, ability, source, index){
+    game.targettedEffect(player, opp, ability, index, this.filters);
   };
   
 }
@@ -180,6 +226,7 @@ rulesListener.prototype.enterFilter = function(ctx) {
   }
   else {
     this.c.text += " "+ctx.getText();
+    this.currentAbility.text += " "+ctx.getText();
     switch (ctx.getText()) {
       case 'untapped':
         this.currentAbility.filters.push(function(c, player, opp) {
@@ -202,6 +249,7 @@ rulesListener.prototype.enterFilter = function(ctx) {
 
 rulesListener.prototype.enterLevelFilter = function(ctx) {
   this.c.text += " "+ctx.getText();
+  this.currentAbility.text += " "+ctx.getText();
   var level = parseInt(ctx.INTEGER().getText());
   var orLess = (ctx.ORLESS() != null);
   var orMore = (ctx.ORMORE() != null);
@@ -219,16 +267,18 @@ rulesListener.prototype.enterLevelFilter = function(ctx) {
 }
 
 rulesListener.prototype.enterDrawOne = function(ctx) {
-  this.c.text += ctx.getText() + ".";
-  this.currentAbility.Resolve = function(game, player, opp, c, index)
+  this.c.text += ctx.getText();
+  this.currentAbility.text += ctx.getText();
+  this.currentAbility.Resolve = function(game, player, opp, ability, source, index)
   {
     game.drawCard(player);
   }
 }
 
 rulesListener.prototype.enterDrawTwo = function(ctx) {
-  this.c.text += ctx.getText() + ".";
-  this.currentAbility.Resolve = function(game, player, opp, c, index)
+  this.c.text += ctx.getText();
+  this.currentAbility.text += ctx.getText();
+  this.currentAbility.Resolve = function(game, player, opp, ability, source, index)
   {
     game.drawCard(player);
     game.drawCard(player);
@@ -247,6 +297,7 @@ rulesListener.prototype.enterTrigger = function(ctx) {
 rulesListener.prototype.enterAttackTrigger = function(ctx) {
   //console.log("enterAttackTrigger");
   this.c.text += ctx.getText() + " ";
+  this.currentAbility.text += ctx.getText() + " ";
   this.currentAbilityTrigger = "attack";
   // this.c.OnAttack = function(game, player, opp, c, index)
   // {
@@ -257,6 +308,7 @@ rulesListener.prototype.enterAttackTrigger = function(ctx) {
 rulesListener.prototype.enterEnterTrigger = function(ctx) {
   //console.log("enterEnterTrigger");
   this.c.text += ctx.getText() + " ";
+  this.currentAbility.text += ctx.getText() + " ";
   this.currentAbilityTrigger = "enter";
   // this.c.OnEnter = function(game, player, opp, c, index)
   // {
@@ -286,6 +338,7 @@ rulesListener.prototype.enterEnterTrigger = function(ctx) {
 rulesListener.prototype.enterKeyword = function(ctx) {
   //this.keywords.push(ctx.getText());
   this.c.text += ctx.getText()+". ";
+  console.log(ctx.getText());
   switch (ctx.getText()) {
       case 'Blocker':
         this.c.blocker = true;
@@ -301,7 +354,7 @@ rulesListener.prototype.enterKeyword = function(ctx) {
 
 module.exports = function ParseRules(c, rulesText)
 {
-  var chars = new antlr4.InputStream(rulesText)
+  var chars = new antlr4.InputStream(rulesText);
   var lexer = new RulesLexer(chars);
   var tokens = new antlr4.CommonTokenStream(lexer);
   var parser = new RulesParser(tokens);
@@ -316,6 +369,6 @@ module.exports = function ParseRules(c, rulesText)
   //   game.resolveAction(player, opp, index, action);
   // };
   // c.Resolve = function(game, player, opp, card, index){
-  //   game.targettedEffect(player, opp, card, index, filters);
+  //   gam  card, index, filters);
   // };
 }

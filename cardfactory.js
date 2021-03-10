@@ -39,6 +39,8 @@ class Card
     this.filters = [];
     this.onAttackAbilities = [];
     this.onEnterAbilities = [];
+    this.onEndAttackAbilities = [];
+    this.uid = 0;
   }
   OnEnter(game, player, opp, c, index)
   {
@@ -104,7 +106,7 @@ module.exports = function CardFactory()
 
   this.Create = function(results) {
     
-    for (var i = 0; i < 10/*9results.length*/; i++) {
+    for (var i = 0; i < 15/*9results.length*/; i++) {
       var c = new Card();
       c.name = results[i].getAttribute("name");
       console.log(c.name);
@@ -114,7 +116,8 @@ module.exports = function CardFactory()
       for (var j = 0; j < properties.length; j++) {
         switch(properties[j].getAttribute("name")) {
           case "Level":
-            c.cost = parseInt(properties[j].getAttribute("value"));
+            //c.cost = parseInt(properties[j].getAttribute("value"));
+            c.cost = 1; //test
             break;
           case "Civilization":
             c.color = properties[j].getAttribute("value");

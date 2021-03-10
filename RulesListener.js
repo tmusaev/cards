@@ -119,6 +119,15 @@ RulesListener.prototype.exitBounceAction = function(ctx) {
 };
 
 
+// Enter a parse tree produced by RulesParser#banishAction.
+RulesListener.prototype.enterBanishAction = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#banishAction.
+RulesListener.prototype.exitBanishAction = function(ctx) {
+};
+
+
 // Enter a parse tree produced by RulesParser#drawOne.
 RulesListener.prototype.enterDrawOne = function(ctx) {
 };
@@ -134,6 +143,24 @@ RulesListener.prototype.enterDrawTwo = function(ctx) {
 
 // Exit a parse tree produced by RulesParser#drawTwo.
 RulesListener.prototype.exitDrawTwo = function(ctx) {
+};
+
+
+// Enter a parse tree produced by RulesParser#endAtkBanish.
+RulesListener.prototype.enterEndAtkBanish = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#endAtkBanish.
+RulesListener.prototype.exitEndAtkBanish = function(ctx) {
+};
+
+
+// Enter a parse tree produced by RulesParser#oppChooseDiscard.
+RulesListener.prototype.enterOppChooseDiscard = function(ctx) {
+};
+
+// Exit a parse tree produced by RulesParser#oppChooseDiscard.
+RulesListener.prototype.exitOppChooseDiscard = function(ctx) {
 };
 
 

@@ -62,11 +62,12 @@ class ManaZone
 
 class StackObj
 {
-  constructor(card, player, opp)
+  constructor(card, player, opp, origin)
   {
     this.card = card;
     this.player = player;
     this.opp = opp;
+    this.origin = origin;
   }
 }
 
@@ -150,7 +151,7 @@ class Game
     this.emitStateStack();
     var stackObj = this.stack[this.stack.length-1];
     var c = stackObj.card;
-    c.Resolve(this, stackObj.player, stackObj.opp, c, -1);
+    c.Resolve(this, stackObj.player, stackObj.opp, c, stackObj.origin, -1);
     if (!this.waitForTargets && this.stack.length > 0)
     {
       this.stack.pop();
@@ -214,9 +215,11 @@ class Game
           }
           this.emitState();
           //c.OnEnter(this, player, opp, c, player.field.length-1);
+          console.log("onEnterAbilities length");
+          console.log(c.onEnterAbilities.length);
           for (var i = 0; i < c.onEnterAbilities.length; i++) 
           {
-            this.pushStack(c.onEnterAbilities[i], player, opp);
+            this.pushStack(c.onEnterAbilities[i], player, opp, c);
           }
           this.resolveStack();
         }
@@ -227,7 +230,7 @@ class Game
           //this.stack.push(new StackObj(c, player, opp));
           for (var i = 0; i < c.onEnterAbilities.length; i++) 
           {
-            this.pushStack(c.onEnterAbilities[i], player, opp);
+            this.pushStack(c.onEnterAbilities[i], player, opp, c);
           }
           this.emitState();
           this.resolveStack();
@@ -280,6 +283,7 @@ class Game
     this.emitStateTimerSet(player, Math.floor(this.timeLeft/1000));
     this.emitStateTimerSet(opp, Math.floor(this.timeLeft/1000));
     this.stack.pop();
+    console.log(this.waitForTargetsSrc);
     this.waitForTargetsSrc.TargetReturned(this, player, opp, index);
     this.waitForTargets = false;
     this.waitForTargetsSrc = null;
@@ -309,9 +313,9 @@ class Game
     }
   }
   
-  pushStack(c, player, opp)
+  pushStack(c, player, opp, origin)
   {
-    this.stack.push(new StackObj(c, player, opp));
+    this.stack.push(new StackObj(c, player, opp, origin));
   }
   
   breakShield(player, opp)
@@ -321,7 +325,13 @@ class Game
     {
       if (c.shieldblast == true)
       {
-        this.stack.push(new StackObj(c, player, opp));
+        //Can't handle shield blast creatures
+        for (var i = 0; i < c.onEnterAbilities.length; i++) 
+        {
+          this.pushStack(c.onEnterAbilities[i], player, opp, c);
+        }
+        //this.stack.push(new StackObj(c, player, opp));
+        //Shield Blast not going to grave?
       }
       else
       {
@@ -366,19 +376,23 @@ class Game
         this.breakShield(player, opp);
       }
       this.emitState();
+      this.resolveStack();
       c.OnEndAttack(this, opp, player, c, opp.field.indexOf(c));
-      if (this.stack.length > 0)
+      //console.log("endAttackAbilities length:");
+      //console.log(c.onEndAttackAbilities.length);
+      for (var i = 0; i < c.onEndAttackAbilities.length; i++) 
       {
-        this.resolveStack();
+        this.pushStack(c.onEndAttackAbilities[i], opp, player, c);
       }
+      this.resolveStack();
     }
     else
     {
-      c.OnEndAttack(this, opp, player, c, opp.field.indexOf(c));
-      if (this.stack.length > 0)
-      {
-        this.resolveStack();
-      }
+      // c.OnEndAttack(this, opp, player, c, opp.field.indexOf(c));
+      // if (this.stack.length > 0)
+      // {
+      //   this.resolveStack();
+      // }
       this.loser = player.id;
       if (this.player1.id == this.loser)
       {
@@ -443,8 +457,6 @@ class Game
       this.emitStateMyCreatureBattleOpp(opp, this.attackerIndex);
       this.emitStateOppCreatureBattleMe(player, this.attackerIndex);
       this.breakShields(player, opp.field[this.attackerIndex], opp);
-      //opp.field[this.attackerIndex].OnEndAttack(this, opp, player, opp.field[this.attackerIndex], this.attackerIndex);
-      //this.emitState();
     }
     this.waitingOnBlock = false;
     this.attackingPlayer = null;
@@ -465,7 +477,7 @@ class Game
         //c.OnAttack(this, player, opp, c, index);
         for (var i = 0; i < c.onAttackAbilities.length; i++) 
         {
-          this.pushStack(c.onAttackAbilities[i], player, opp);
+          this.pushStack(c.onAttackAbilities[i], player, opp, c);
         }
         this.resolveStack();
         var blockers = this.getBlockers(c, opp, -1);
@@ -491,8 +503,6 @@ class Game
           this.emitStateMyCreatureBattleOpp(player, player.field.indexOf(c));
           this.emitStateOppCreatureBattleMe(opp, player.field.indexOf(c));
           this.breakShields(opp, c, player);
-          //c.OnEndAttack(this, player, opp, c, index);
-          //this.emitState();
         }
       }
     }
@@ -520,7 +530,7 @@ class Game
         //c.OnAttack(this, player, opp, c, from);
         for (var i = 0; i < c.onAttackAbilities.length; i++) 
         {
-          this.pushStack(c.onAttackAbilities[i], player, opp);
+          this.pushStack(c.onAttackAbilities[i], player, opp, c);
         }
         this.resolveStack();
         var blockers = this.getBlockers(c, opp, to);
@@ -577,6 +587,11 @@ class Game
       {
         c.OnWinBattle(this, player, opp, c);
         c.OnEndAttack(this, player, opp, c, player.field.indexOf(c));
+        for (var i = 0; i < c.onEndAttackAbilities.length; i++) 
+        {
+          this.pushStack(c.onEndAttackAbilities[i], player, opp, c);
+        }
+        this.resolveStack();
       }
       if (d_dmg > 0)
       {
@@ -759,6 +774,7 @@ class Game
     }
     console.log("discard index: "+index);
     player.hand.splice(index, 1)[0];
+    this.emitState();
   }
   
   chargeCard(player, opp)
@@ -1125,13 +1141,13 @@ class Game
     var i;
     for (i = 0; i < 20; i++)
     {
-      this.player1.deck.push(this.cardFactory.GetCard("Teleport"));
-      this.player1.deck.push(this.cardFactory.GetCard("Hydro Spy"));
+      this.player1.deck.push(this.cardFactory.GetCard("Fumes"));
+      this.player1.deck.push(this.cardFactory.GetCard("Bone Blades"));
      }
     for (i = 0; i < 20; i++)
     {
-      this.player2.deck.push(this.cardFactory.GetCard("Teleport"));
-      this.player2.deck.push(this.cardFactory.GetCard("Aqua Seneschal"));
+      this.player2.deck.push(this.cardFactory.GetCard("Fumes"));
+      this.player2.deck.push(this.cardFactory.GetCard("Bone Blades"));
     }
     shuffle(this.player1.deck);
     shuffle(this.player2.deck);
